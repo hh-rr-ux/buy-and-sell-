@@ -33,6 +33,26 @@ export const CHATWORK_API_BASE = 'https://api.chatwork.com/v2'
 // ── Google Sheets API エンドポイント ─────────────────────────────────
 export const GOOGLE_SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
+// ── Google Calendar 設定 ──────────────────────────────────────────────
+// 連携対象のカレンダーIDを環境変数で管理します。
+// 複数カレンダーを使い分ける場合はカンマ区切りで設定してください。
+//   例: GOOGLE_CALENDAR_ID=primary,xxxxx@group.calendar.google.com
+//
+// 認証方法:
+//   サービスアカウント（推奨）: GOOGLE_SERVICE_ACCOUNT_KEY に JSON をセット
+//   OAuth2: GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN
+export const GOOGLE_CALENDAR = {
+  CALENDAR_ID:          process.env.GOOGLE_CALENDAR_ID           || 'primary',
+  API_KEY:              process.env.GOOGLE_CALENDAR_API_KEY       || '',  // 公開カレンダー向け
+  SERVICE_ACCOUNT_KEY:  process.env.GOOGLE_SERVICE_ACCOUNT_KEY   || '',  // JSON文字列
+  OAUTH_CLIENT_ID:      process.env.GOOGLE_OAUTH_CLIENT_ID        || '',
+  OAUTH_CLIENT_SECRET:  process.env.GOOGLE_OAUTH_CLIENT_SECRET    || '',
+  OAUTH_REFRESH_TOKEN:  process.env.GOOGLE_OAUTH_REFRESH_TOKEN    || '',
+}
+
+// ── Google Calendar API エンドポイント ────────────────────────────────
+export const GOOGLE_CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3'
+
 // ── 設定済み状態チェック ──────────────────────────────────────────────
 export function getEnvStatus() {
   return {
@@ -46,5 +66,10 @@ export function getEnvStatus() {
     googleSheetsApiKey:   !!process.env.GOOGLE_SHEETS_API_KEY,
     googleSheetsCasesRange: !!process.env.GOOGLE_SHEETS_CASES_RANGE,
     googleSheetsLineRange:  !!process.env.GOOGLE_SHEETS_LINE_RANGE,
+    googleCalendarId:       !!process.env.GOOGLE_CALENDAR_ID,
+    googleCalendarAuth:     !!(
+      process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
+      (process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_REFRESH_TOKEN)
+    ),
   }
 }

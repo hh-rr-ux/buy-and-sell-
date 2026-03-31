@@ -2,6 +2,7 @@ export const dynamic = 'force-static'
 
 import { Settings, CheckCircle2, XCircle } from 'lucide-react'
 import { getEnvStatus } from '@/lib/config'
+import { Calendar } from 'lucide-react'
 
 function StatusRow({ label, configured, varName }: { label: string; configured: boolean; varName: string }) {
   return (
@@ -42,8 +43,14 @@ export default function SettingsPage() {
     { label: 'LINE問い合わせシート範囲', configured: status.googleSheetsLineRange,  varName: 'GOOGLE_SHEETS_LINE_RANGE' },
   ]
 
+  const calendarItems = [
+    { label: 'カレンダーID',            configured: status.googleCalendarId,   varName: 'GOOGLE_CALENDAR_ID' },
+    { label: '認証情報（サービスアカウント or OAuth）', configured: status.googleCalendarAuth, varName: 'GOOGLE_SERVICE_ACCOUNT_KEY または GOOGLE_OAUTH_*' },
+  ]
+
   const chatworkConfigured = chatworkItems.filter(i => i.configured).length
   const sheetsConfigured = sheetsItems.filter(i => i.configured).length
+  const calendarConfigured = calendarItems.filter(i => i.configured).length
 
   return (
     <div className="p-6 max-w-2xl">
@@ -98,6 +105,30 @@ export default function SettingsPage() {
         </div>
         <div>
           {sheetsItems.map(item => (
+            <StatusRow key={item.varName} {...item} />
+          ))}
+        </div>
+      </div>
+
+      {/* Google Calendar */}
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Calendar size={14} className="text-blue-500" />
+            <h2 className="text-sm font-bold text-gray-700">Google Calendar API</h2>
+          </div>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+            calendarConfigured === calendarItems.length
+              ? 'bg-green-50 text-green-600'
+              : calendarConfigured > 0
+              ? 'bg-yellow-50 text-yellow-600'
+              : 'bg-red-50 text-red-500'
+          }`}>
+            {calendarConfigured} / {calendarItems.length} 設定済み
+          </span>
+        </div>
+        <div>
+          {calendarItems.map(item => (
             <StatusRow key={item.varName} {...item} />
           ))}
         </div>

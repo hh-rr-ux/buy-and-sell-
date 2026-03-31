@@ -80,6 +80,30 @@ export interface LineInquiry {
   count: number  // 問い合わせ数（公式LINEからの問い合わせ）
 }
 
+// ── Google Calendar イベント ──────────────────────────────────────────
+// Google Calendar API v3 の events.list レスポンスに対応
+export type CalendarEventType =
+  | '査定'       // 物件査定
+  | '内見'       // 物件内見
+  | '契約'       // 各種契約（媒介・売買）
+  | '決済'       // 決済
+  | '打ち合わせ'  // 社内・顧客との打ち合わせ
+  | 'その他'
+
+export interface CalendarEvent {
+  id: string
+  title: string           // Google Calendar の summary
+  eventType: CalendarEventType
+  start: string           // ISO8601 (YYYY-MM-DDTHH:mm:ss+09:00)
+  end: string             // ISO8601
+  allDay: boolean
+  caseId?: string         // 紐づく案件ID（売却:S000 / 購入:B000）
+  clientName?: string     // お客様名
+  staff: Staff
+  location?: string
+  description?: string    // Google Calendar の description
+}
+
 // ── Chatwork メッセージ ───────────────────────────────────────────────
 export interface ChatworkMessage {
   messageId: string
@@ -555,5 +579,92 @@ export const chatworkMessages: ChatworkMessage[] = [
     account: { name: 'LINE公式アカウント' },
     body: '[LINE通知] 新規問い合わせ：「相続した土地の売却について相談したいです。」',
     sendTime: 1743363000,
+  },
+]
+
+// ── モックカレンダーデータ ────────────────────────────────────────────
+// TODO: Google Calendar API連携時は calendarService.ts の fetchEvents() に差し替え
+export const mockCalendarEvents: CalendarEvent[] = [
+  {
+    id: 'evt001',
+    title: '【査定】山田様 / 世田谷区マンション',
+    eventType: '査定',
+    start: '2026-04-01T10:00:00+09:00',
+    end:   '2026-04-01T11:30:00+09:00',
+    allDay: false,
+    caseId: 'S001',
+    clientName: '山田',
+    staff: '鈴木',
+    location: '東京都世田谷区xxx',
+  },
+  {
+    id: 'evt002',
+    title: '【内見】佐藤様 / 港区タワーマンション',
+    eventType: '内見',
+    start: '2026-04-02T14:00:00+09:00',
+    end:   '2026-04-02T15:30:00+09:00',
+    allDay: false,
+    caseId: 'B001',
+    clientName: '佐藤',
+    staff: '田中',
+    location: '東京都港区xxx',
+  },
+  {
+    id: 'evt003',
+    title: '【契約】田中様 / 大阪府吹田市一戸建て 媒介契約',
+    eventType: '契約',
+    start: '2026-04-03T13:00:00+09:00',
+    end:   '2026-04-03T14:00:00+09:00',
+    allDay: false,
+    caseId: 'S009',
+    clientName: '田中',
+    staff: '佐藤',
+    location: '事務所',
+  },
+  {
+    id: 'evt004',
+    title: '【決済】鈴木様 / 横浜市戸建て',
+    eventType: '決済',
+    start: '2026-04-07T10:00:00+09:00',
+    end:   '2026-04-07T12:00:00+09:00',
+    allDay: false,
+    caseId: 'S003',
+    clientName: '鈴木',
+    staff: '山田',
+    location: '司法書士事務所',
+  },
+  {
+    id: 'evt005',
+    title: '社内打ち合わせ（週次）',
+    eventType: '打ち合わせ',
+    start: '2026-04-08T09:00:00+09:00',
+    end:   '2026-04-08T10:00:00+09:00',
+    allDay: false,
+    staff: '鈴木',
+    location: '事務所',
+  },
+  {
+    id: 'evt006',
+    title: '【内見】川村様 / 千葉市中古マンション',
+    eventType: '内見',
+    start: '2026-04-10T11:00:00+09:00',
+    end:   '2026-04-10T12:30:00+09:00',
+    allDay: false,
+    caseId: 'B004',
+    clientName: '川村',
+    staff: '伊藤',
+    location: '千葉市xxx',
+  },
+  {
+    id: 'evt007',
+    title: '【契約】渡辺様 / 名古屋市マンション 売買契約',
+    eventType: '契約',
+    start: '2026-04-14T15:00:00+09:00',
+    end:   '2026-04-14T16:30:00+09:00',
+    allDay: false,
+    caseId: 'S011',
+    clientName: '渡辺',
+    staff: '田中',
+    location: '事務所',
   },
 ]
