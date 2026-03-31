@@ -8,6 +8,7 @@ import {
   sellCases, buyCases, monthlyStats,
   lineInquiries, chatworkRooms,
   calcBrokerageFee, formatPrice,
+  SELL_AREAS, BUY_AREAS,
 } from '@/lib/mockData'
 import { calculateKPIs } from '@/lib/dataLoader'
 
@@ -216,6 +217,34 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-center mt-1 text-gray-400 leading-tight" style={{ fontSize: '9px' }}>{stage}</p>
                     </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* エリア別件数サマリー */}
+            <div className="pt-3 border-t border-gray-100 space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-semibold text-red-500 w-8 flex-shrink-0">売却:</span>
+                {Object.entries(SELL_AREAS).map(([area, prefs], i) => {
+                  const count = sellCases.filter(c => prefs.includes(c.prefecture) && c.stage !== '相談終了').length
+                  return (
+                    <span key={area} className="text-[10px] text-gray-600">
+                      <span className="font-semibold text-gray-700">{area}</span> {count}件
+                      {i < Object.keys(SELL_AREAS).length - 1 && <span className="text-gray-300 ml-2">|</span>}
+                    </span>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-semibold text-blue-500 w-8 flex-shrink-0">購入:</span>
+                {Object.entries(BUY_AREAS).map(([area, prefs], i) => {
+                  const count = buyCases.filter(c => prefs.includes(c.prefecture) && c.stage !== '相談終了').length
+                  return (
+                    <span key={area} className="text-[10px] text-gray-600">
+                      <span className="font-semibold text-gray-700">{area}</span> {count}件
+                      {i < Object.keys(BUY_AREAS).length - 1 && <span className="text-gray-300 ml-2">|</span>}
+                    </span>
                   )
                 })}
               </div>

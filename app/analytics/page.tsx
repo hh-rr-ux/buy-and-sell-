@@ -20,8 +20,8 @@ import {
   LineChart,
   Line,
 } from 'recharts'
-import { BarChart3, TrendingUp, Users, Target, MessageCircle } from 'lucide-react'
-import { monthlyStats, staffStats, conversionFunnel, sellCases, buyCases, lineInquiries } from '@/lib/mockData'
+import { BarChart3, TrendingUp, Users, Target, MessageCircle, MapPin } from 'lucide-react'
+import { monthlyStats, staffStats, conversionFunnel, sellCases, buyCases, lineInquiries, SELL_AREAS, BUY_AREAS, formatPrice } from '@/lib/mockData'
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f97316', '#eab308', '#22c55e']
 const STAFF_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f97316', '#ec4899']
@@ -309,8 +309,275 @@ export default function AnalyticsPage() {
         </ResponsiveContainer>
       </div>
 
+      {/* ━━━ エリア・都道府県別 売上分析 ━━━ */}
+      <AreaAnalysisSection />
+
       {/* ━━━ LINE問い合わせ分析 ━━━ */}
       <LineAnalysisSection />
+    </div>
+  )
+}
+
+function AreaAnalysisSection() {
+  // 売却: エリア別集計
+  const sellAreaData = Object.entries(SELL_AREAS).map(([area, prefs]) => {
+    const cases = sellCases.filter(c => prefs.includes(c.prefecture))
+    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
+    const totalPrice = cases.reduce((s, c) => s + c.askingPrice, 0)
+    const prefBreakdown = prefs.map(pref => ({
+      pref,
+      count: sellCases.filter(c => c.prefecture === pref).length,
+    }))
+    return { area, prefs, count: cases.length, totalFee, totalPrice, prefBreakdown }
+  })
+
+  // 購入: エリア別集計
+  const buyAreaData = Object.entries(BUY_AREAS).map(([area, prefs]) => {
+    const cases = buyCases.filter(c => prefs.includes(c.prefecture))
+    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
+    const totalPrice = cases.reduce((s, c) => s + c.budget, 0)
+    const prefBreakdown = prefs.map(pref => ({
+      pref,
+      count: buyCases.filter(c => c.prefecture === pref).length,
+    }))
+    return { area, prefs, count: cases.length, totalFee, totalPrice, prefBreakdown }
+  })
+
+  // 都道府県別テーブル（売却）
+  const sellPrefStats = Array.from(
+    new Set(sellCases.map(c => c.prefecture))
+  ).map(pref => {
+    const cases = sellCases.filter(c => c.prefecture === pref)
+    const totalPrice = cases.reduce((s, c) => s + c.askingPrice, 0)
+    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
+    const avgPrice = cases.length > 0 ? Math.round(totalPrice / cases.length) : 0
+    return { pref, count: cases.length, totalPrice, totalFee, avgPrice }
+  }).sort((a, b) => b.totalFee - a.totalFee)
+
+  // 都道府県別テーブル（購入）
+  const buyPrefStats = Array.from(
+    new Set(buyCases.map(c => c.prefecture))
+  ).map(pref => {
+    const cases = buyCases.filter(c => c.prefecture === pref)
+    const totalPrice = cases.reduce((s, c) => s + c.budget, 0)
+    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
+    const avgPrice = cases.length > 0 ? Math.round(totalPrice / cases.length) : 0
+    return { pref, count: cases.length, totalPrice, totalFee, avgPrice }
+  }).sort((a, b) => b.totalFee - a.totalFee)
+
+  // エリア別売上チャートデータ（売却+購入合算）
+  const allAreas = Array.from(new Set([
+    ...Object.keys(SELL_AREAS),
+    ...Object.keys(BUY_AREAS),
+  ]))
+  const areaChartData = allAreas.map(area => {
+    const sellPrefs = SELL_AREAS[area] ?? []
+    const buyPrefs = BUY_AREAS[area] ?? []
+    const sellFee = sellCases.filter(c => sellPrefs.includes(c.prefecture)).reduce((s, c) => s + c.brokerageFee, 0)
+    const buyFee = buyCases.filter(c => buyPrefs.includes(c.prefecture)).reduce((s, c) => s + c.brokerageFee, 0)
+    return {
+      area,
+      売却手数料: Math.round(sellFee / 10000),
+      購入手数料: Math.round(buyFee / 10000),
+    }
+  })
+
+  const AREA_COLORS_SELL = ['#ef4444', '#f97316', '#8b5cf6']
+  const AREA_COLORS_BUY  = ['#3b82f6', '#06b6d4']
+
+  return (
+    <div className="space-y-5 mt-6">
+      {/* セクションヘッダー */}
+      <div className="flex items-center gap-3 pt-2">
+        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+          <MapPin size={18} className="text-indigo-600" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">エリア・都道府県別 売上分析</h2>
+          <p className="text-xs text-gray-400">※ 仮値表示中 — スプシ連携後に実データへ自動更新</p>
+        </div>
+      </div>
+
+      {/* エリア別売上バーチャート */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 rounded-full bg-indigo-500 inline-block"/>
+          エリア別 仲介手数料合計（万円）
+        </h3>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={areaChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="area" tick={{ fontSize: 13, fill: '#374151' }} />
+            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+            <Bar dataKey="売却手数料" fill="#ef4444" radius={[4,4,0,0]} />
+            <Bar dataKey="購入手数料" fill="#3b82f6" radius={[4,4,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 売却エリア別カード */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>
+          売却エリア別
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {sellAreaData.map((d, i) => {
+            const maxCount = Math.max(...d.prefBreakdown.map(p => p.count), 1)
+            return (
+              <div key={d.area} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-gray-800 text-base">{d.area}</span>
+                  <span
+                    className="text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: AREA_COLORS_SELL[i] }}
+                  >
+                    {d.count}件
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mb-1">手数料合計</p>
+                <p className="text-lg font-black mb-3" style={{ color: AREA_COLORS_SELL[i] }}>
+                  {formatPrice(d.totalFee)}
+                </p>
+                <p className="text-[10px] text-gray-400 mb-2">対応都道府県: {d.prefs.join('・')}</p>
+                <div className="space-y-1.5">
+                  {d.prefBreakdown.map(pb => (
+                    <div key={pb.pref} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600 w-16 flex-shrink-0">{pb.pref}</span>
+                      <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-2 rounded-full"
+                          style={{
+                            width: `${(pb.count / maxCount) * 100}%`,
+                            backgroundColor: AREA_COLORS_SELL[i],
+                            minWidth: pb.count > 0 ? '6px' : '0',
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-gray-700 w-6 text-right">{pb.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* 購入エリア別カード */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"/>
+          購入エリア別
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {buyAreaData.map((d, i) => {
+            const maxCount = Math.max(...d.prefBreakdown.map(p => p.count), 1)
+            return (
+              <div key={d.area} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-gray-800 text-base">{d.area}</span>
+                  <span
+                    className="text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: AREA_COLORS_BUY[i] }}
+                  >
+                    {d.count}件
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mb-1">手数料合計</p>
+                <p className="text-lg font-black mb-3" style={{ color: AREA_COLORS_BUY[i] }}>
+                  {formatPrice(d.totalFee)}
+                </p>
+                <p className="text-[10px] text-gray-400 mb-2">対応都道府県: {d.prefs.join('・')}</p>
+                <div className="space-y-1.5">
+                  {d.prefBreakdown.map(pb => (
+                    <div key={pb.pref} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600 w-16 flex-shrink-0">{pb.pref}</span>
+                      <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-2 rounded-full"
+                          style={{
+                            width: `${(pb.count / maxCount) * 100}%`,
+                            backgroundColor: AREA_COLORS_BUY[i],
+                            minWidth: pb.count > 0 ? '6px' : '0',
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-gray-700 w-6 text-right">{pb.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* 都道府県別テーブル（売却） */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 rounded-full bg-red-500 inline-block"/>
+          都道府県別テーブル（売却）
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">都道府県</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">案件数</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">物件価格合計</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">仲介手数料合計</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">平均価格</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sellPrefStats.map((row, i) => (
+                <tr key={row.pref} className={`border-b border-gray-50 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                  <td className="py-2.5 px-3 font-medium text-gray-800">{row.pref}</td>
+                  <td className="py-2.5 px-3 text-right text-gray-700">{row.count}件</td>
+                  <td className="py-2.5 px-3 text-right text-gray-700">{formatPrice(row.totalPrice)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-red-600">{formatPrice(row.totalFee)}</td>
+                  <td className="py-2.5 px-3 text-right text-gray-600">{formatPrice(row.avgPrice)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 都道府県別テーブル（購入） */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 rounded-full bg-blue-500 inline-block"/>
+          都道府県別テーブル（購入）
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">都道府県</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">案件数</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">予算合計</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">仲介手数料合計</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">平均予算</th>
+              </tr>
+            </thead>
+            <tbody>
+              {buyPrefStats.map((row, i) => (
+                <tr key={row.pref} className={`border-b border-gray-50 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                  <td className="py-2.5 px-3 font-medium text-gray-800">{row.pref}</td>
+                  <td className="py-2.5 px-3 text-right text-gray-700">{row.count}件</td>
+                  <td className="py-2.5 px-3 text-right text-gray-700">{formatPrice(row.totalPrice)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-blue-600">{formatPrice(row.totalFee)}</td>
+                  <td className="py-2.5 px-3 text-right text-gray-600">{formatPrice(row.avgPrice)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
