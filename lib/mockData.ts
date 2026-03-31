@@ -5,6 +5,7 @@ export type SellStage =
   | '販売活動'
   | '売買契約'
   | '決済'
+  | '相談終了'  // スプシから取得するが表示はカウントのみ
 
 export type BuyStage =
   | '問い合わせ'
@@ -13,6 +14,7 @@ export type BuyStage =
   | '売買契約'
   | 'ローン審査'
   | '決済'
+  | '相談終了'  // スプシから取得するが表示はカウントのみ
 
 export type Staff = '鈴木' | '田中' | '佐藤' | '山田' | '伊藤'
 
