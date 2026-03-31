@@ -53,6 +53,15 @@ export const GOOGLE_CALENDAR = {
 // ── Google Calendar API エンドポイント ────────────────────────────────
 export const GOOGLE_CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3'
 
+// ── 管理者認証設定 ────────────────────────────────────────────────────
+// 設定ページへのアクセスをID/PWで保護します。
+// GitHub Secrets に登録してください:
+//   NEXT_PUBLIC_SETTINGS_ID  : 管理者ID
+//   NEXT_PUBLIC_SETTINGS_PW  : 管理者パスワード
+// ※ NEXT_PUBLIC_ 変数はビルド時に静的埋め込みされます。
+//    第三者がビルド済みJSを解析すると値が見える点に注意してください。
+//    外部公開 URL に直接アクセスされることを防ぐ用途に適しています。
+
 // ── 設定済み状態チェック ──────────────────────────────────────────────
 export function getEnvStatus() {
   return {

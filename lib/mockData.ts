@@ -668,3 +668,97 @@ export const mockCalendarEvents: CalendarEvent[] = [
     location: '事務所',
   },
 ]
+
+// ── スタッフ評価 ────────────────────────────────────────────────────────
+// TODO: Chatwork API連携後は実メッセージを解析して自動生成
+// 評価軸:
+//   responseSpeed   : チャット上での返信速度・即応性（1〜5）
+//   customerHandling: お客様対応の丁寧さ・的確さ（1〜5）
+//   caseProgress    : 案件推進力・クロージング能力（1〜5）
+//   teamContrib     : チームへの情報共有・連携貢献（1〜5）
+// score: 総合スコア（100点換算）
+// chatEvidence: 評価根拠となるチャット発言の引用・所見（第三者視点）
+export interface StaffEvaluation {
+  staff: Staff
+  responseSpeed: number
+  customerHandling: number
+  caseProgress: number
+  teamContrib: number
+  score: number             // 総合スコア（100点）
+  rank: 'S' | 'A' | 'B' | 'C'
+  chatEvidence: string[]    // 評価根拠コメント（Chatworkメッセージ分析）
+  improvementPoint: string  // 改善提案
+}
+
+export const mockStaffEvaluations: StaffEvaluation[] = [
+  {
+    staff: '鈴木',
+    responseSpeed: 4,
+    customerHandling: 4,
+    caseProgress: 4,
+    teamContrib: 5,
+    score: 85,
+    rank: 'A',
+    chatEvidence: [
+      '「3月の月次集計を共有します。売上目標達成率は98%でした」→ 数値を根拠にした報告を自発的に行っており、チームへの透明性が高い。',
+      '月次報告のトーンは簡潔かつ前向きで、次月への行動意欲も明示されている。指示を待たず動く姿勢が評価できる。',
+    ],
+    improvementPoint: 'チームへの情報共有は優秀。今後は後輩スタッフへの指導・ノウハウ共有にも積極的に関与することで、組織全体の底上げに貢献できる。',
+  },
+  {
+    staff: '田中',
+    responseSpeed: 4,
+    customerHandling: 3,
+    caseProgress: 4,
+    teamContrib: 4,
+    score: 78,
+    rank: 'A',
+    chatEvidence: [
+      '「荻窪ガーデン（S007）の価格調整について、オーナーと協議しました。来週結論を出す予定です」→ 交渉経過をチームに共有する習慣があり、案件の可視性が高い。',
+      '価格調整という難易度の高い交渉を自ら主導している点は、案件推進力として評価できる。ただし結論を「来週」に先送りする点はスピード改善の余地あり。',
+    ],
+    improvementPoint: '交渉の進捗共有は適切。意思決定のリードタイムを短縮する工夫（オーナーへの選択肢の絞り込みなど）があると、よりクロージング速度が向上する。',
+  },
+  {
+    staff: '佐藤',
+    responseSpeed: 3,
+    customerHandling: 4,
+    caseProgress: 4,
+    teamContrib: 3,
+    score: 72,
+    rank: 'B',
+    chatEvidence: [
+      'チャット上の発言は少ないが、担当案件（代々木レジデンス）が売買契約まで到達しており、着実な案件推進力が数字に表れている。',
+      'お客様対応に関するトラブルや苦情コメントは確認されておらず、対応品質は安定していると推察される。',
+    ],
+    improvementPoint: 'チャットへの発言頻度を高め、進捗・課題をよりリアルタイムに共有することで、チームとしての連携精度が上がる。現状は「結果で示す」タイプだが、過程の可視化も重要。',
+  },
+  {
+    staff: '山田',
+    responseSpeed: 4,
+    customerHandling: 4,
+    caseProgress: 5,
+    teamContrib: 3,
+    score: 80,
+    rank: 'A',
+    chatEvidence: [
+      '担当案件に決済ステージの案件が含まれており、クロージングまで案件を完結させる能力は社内でも上位と評価できる。',
+      'チャット上の発言は限られているが、担当案件の成約率・進捗ステージから判断して、対顧客対応の質は高いと推察される。',
+    ],
+    improvementPoint: '成約力は高い。チャットや社内共有の場で自身のクロージングプロセスを言語化・共有することで、チーム全体の成約率向上に貢献できる可能性が高い。',
+  },
+  {
+    staff: '伊藤',
+    responseSpeed: 3,
+    customerHandling: 3,
+    caseProgress: 3,
+    teamContrib: 2,
+    score: 58,
+    rank: 'C',
+    chatEvidence: [
+      '直近のチャットログにおいて発言が確認されておらず、業務状況の可視化が不足している。チーム内での存在感・貢献度が外部から測定しにくい状態。',
+      '担当案件は進行中だが、ステージ滞留日数がやや長めの傾向があり、案件推進スピードの改善が望まれる。',
+    ],
+    improvementPoint: 'まず日次・週次でチャットへの簡易報告（担当案件の現状・今週のアクション）を習慣化することを推奨。小さな発信の積み重ねが信頼とチーム連携の強化につながる。',
+  },
+]

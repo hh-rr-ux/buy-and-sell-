@@ -1,76 +1,111 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Lock, Eye, EyeOff } from 'lucide-react'
+import { Lock, Eye, EyeOff, LogOut } from 'lucide-react'
 
-const CORRECT_PIN = process.env.NEXT_PUBLIC_SETTINGS_PIN || '1234'
+const CORRECT_ID = process.env.NEXT_PUBLIC_SETTINGS_ID || 'admin'
+const CORRECT_PW = process.env.NEXT_PUBLIC_SETTINGS_PW || 'password'
 const STORAGE_KEY = 'settings_auth'
+
+// ログアウトボタンを他コンポーネントから呼べるよう export
+export function SettingsLogoutButton() {
+  const handleLogout = () => {
+    sessionStorage.removeItem(STORAGE_KEY)
+    window.location.reload()
+  }
+  return (
+    <button
+      onClick={handleLogout}
+      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 transition-colors"
+    >
+      <LogOut size={13} />
+      ログアウト
+    </button>
+  )
+}
 
 export default function SettingsPinGate({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false)
-  const [pin, setPin] = useState('')
-  const [show, setShow] = useState(false)
+  const [id, setId] = useState('')
+  const [pw, setPw] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState(false)
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
-    if (sessionStorage.getItem(STORAGE_KEY) === 'ok') {
-      setAuthed(true)
-    }
+    if (sessionStorage.getItem(STORAGE_KEY) === 'ok') setAuthed(true)
     setChecked(true)
   }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (pin === CORRECT_PIN) {
+    if (id === CORRECT_ID && pw === CORRECT_PW) {
       sessionStorage.setItem(STORAGE_KEY, 'ok')
       setAuthed(true)
       setError(false)
     } else {
       setError(true)
-      setPin('')
+      setPw('')
     }
   }
 
   if (!checked) return null
-
   if (authed) return <>{children}</>
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-8 w-full max-w-xs text-center">
-        <div className="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
-          <Lock size={20} className="text-gray-400" />
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-8 w-full max-w-xs">
+        <div className="text-center mb-6">
+          <div className="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-3">
+            <Lock size={20} className="text-gray-400" />
+          </div>
+          <h2 className="text-base font-bold text-gray-800">管理者ページ</h2>
+          <p className="text-xs text-gray-400 mt-1">IDとパスワードを入力してください</p>
         </div>
-        <h2 className="text-base font-bold text-gray-800 mb-1">設定ページ</h2>
-        <p className="text-xs text-gray-400 mb-6">PINコードを入力してください</p>
+
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="relative">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 font-medium">ID</label>
             <input
-              type={show ? 'text' : 'password'}
-              inputMode="numeric"
-              value={pin}
-              onChange={e => { setPin(e.target.value); setError(false) }}
-              placeholder="PIN"
-              className={`w-full border rounded-lg px-4 py-2.5 text-center text-sm font-mono tracking-widest outline-none transition-colors ${
+              type="text"
+              value={id}
+              onChange={e => { setId(e.target.value); setError(false) }}
+              placeholder="管理者ID"
+              autoComplete="username"
+              className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition-colors ${
                 error ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-blue-300'
               }`}
               autoFocus
             />
-            <button
-              type="button"
-              onClick={() => setShow(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
-            >
-              {show ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
           </div>
-          {error && <p className="text-xs text-red-400">PINが正しくありません</p>}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 font-medium">パスワード</label>
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={pw}
+                onChange={e => { setPw(e.target.value); setError(false) }}
+                placeholder="パスワード"
+                autoComplete="current-password"
+                className={`w-full border rounded-lg px-3 py-2.5 text-sm outline-none transition-colors pr-10 ${
+                  error ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-blue-300'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+              >
+                {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+          {error && <p className="text-xs text-red-400 text-center">IDまたはパスワードが正しくありません</p>}
           <button
             type="submit"
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+            className="w-full bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1"
           >
-            確認
+            ログイン
           </button>
         </form>
       </div>
