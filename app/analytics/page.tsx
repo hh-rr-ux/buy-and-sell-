@@ -20,8 +20,8 @@ import {
   LineChart,
   Line,
 } from 'recharts'
-import { BarChart3, TrendingUp, Users, Target } from 'lucide-react'
-import { monthlyStats, staffStats, conversionFunnel, sellCases, buyCases } from '@/lib/mockData'
+import { BarChart3, TrendingUp, Users, Target, MessageCircle } from 'lucide-react'
+import { monthlyStats, staffStats, conversionFunnel, sellCases, buyCases, lineInquiries } from '@/lib/mockData'
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f97316', '#eab308', '#22c55e']
 const STAFF_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f97316', '#ec4899']
@@ -307,6 +307,196 @@ export default function AnalyticsPage() {
             />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* ━━━ LINE問い合わせ分析 ━━━ */}
+      <LineAnalysisSection />
+    </div>
+  )
+}
+
+function LineAnalysisSection() {
+  // 月別集計（仮値 ※スプシ連携後に実データへ置換）
+  const monthlyLine = [
+    { month: '10月', count: 38, converted: 3 },
+    { month: '11月', count: 42, converted: 4 },
+    { month: '12月', count: 35, converted: 5 },
+    { month: '1月',  count: 51, converted: 4 },
+    { month: '2月',  count: 47, converted: 4 },
+    { month: '3月',  count: 58, converted: 5 },
+  ]
+
+  // 曜日別（仮値）
+  const weekdayData = [
+    { day: '月', count: 18 },
+    { day: '火', count: 14 },
+    { day: '水', count: 16 },
+    { day: '木', count: 12 },
+    { day: '金', count: 22 },
+    { day: '土', count: 42 },
+    { day: '日', count: 38 },
+  ]
+
+  // 時間帯別（仮値）
+  const hourData = [
+    { hour: '〜9時',  count: 8 },
+    { hour: '9〜12時', count: 24 },
+    { hour: '12〜15時', count: 31 },
+    { hour: '15〜18時', count: 28 },
+    { hour: '18〜21時', count: 52 },
+    { hour: '21時〜',  count: 19 },
+  ]
+
+  const thisMonth   = lineInquiries.filter(d => d.date.startsWith('2026-03'))
+  const lastMonth   = lineInquiries.filter(d => d.date.startsWith('2026-02'))
+  const thisTotal   = thisMonth.reduce((s, d) => s + d.count, 0)
+  const lastTotal   = lastMonth.reduce((s, d) => s + d.count, 0)
+  const trend       = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : 0
+  const avgPerDay   = (thisTotal / thisMonth.length).toFixed(1)
+  const totalClosed = monthlyStats[monthlyStats.length - 1].closedSell + monthlyStats[monthlyStats.length - 1].closedBuy
+  const convRate    = thisTotal > 0 ? ((totalClosed / thisTotal) * 100).toFixed(1) : '0'
+
+  const maxWeekday  = Math.max(...weekdayData.map(d => d.count))
+  const maxHour     = Math.max(...hourData.map(d => d.count))
+
+  return (
+    <div className="space-y-5">
+      {/* セクションヘッダー */}
+      <div className="flex items-center gap-3 pt-2">
+        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+          <MessageCircle size={18} className="text-green-600" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">公式LINE 問い合わせ分析</h2>
+          <p className="text-xs text-gray-400">※ 仮値表示中 — スプシ連携後に実データへ自動更新</p>
+        </div>
+      </div>
+
+      {/* KPIカード */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+          <p className="text-3xl font-black text-green-600">{thisTotal}</p>
+          <p className="text-xs text-green-700 font-medium mt-1">今月の問い合わせ数</p>
+          <p className={`text-xs mt-1 font-semibold ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            先月比 {trend >= 0 ? '+' : ''}{trend}%
+          </p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
+          <p className="text-3xl font-black text-gray-800">{avgPerDay}</p>
+          <p className="text-xs text-gray-500 mt-1">1日平均件数</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
+          <p className="text-3xl font-black text-indigo-600">{convRate}%</p>
+          <p className="text-xs text-gray-500 mt-1">LINE→成約率（今月）</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
+          <p className="text-3xl font-black text-orange-500">{lastTotal}</p>
+          <p className="text-xs text-gray-500 mt-1">先月の問い合わせ数</p>
+        </div>
+      </div>
+
+      {/* 月別推移 + 成約数 */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 rounded-full bg-green-500 inline-block"/>
+          月別LINE問い合わせ数 &amp; 成約数
+        </h3>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={monthlyLine} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#9ca3af' }} />
+            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+            <Bar dataKey="count"     name="LINE問い合わせ" fill="#22c55e" radius={[4,4,0,0]} opacity={0.85} />
+            <Bar dataKey="converted" name="成約数"         fill="#4f46e5" radius={[4,4,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 曜日別 + 時間帯別 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* 曜日別 */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-green-500 inline-block"/>
+            曜日別 問い合わせ分布
+            <span className="ml-auto text-xs text-gray-400 font-normal">土日が多い傾向</span>
+          </h3>
+          <div className="flex items-end gap-2 h-32">
+            {weekdayData.map(d => {
+              const pct = (d.count / maxWeekday) * 100
+              const isWeekend = d.day === '土' || d.day === '日'
+              return (
+                <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-xs font-bold text-gray-600">{d.count}</span>
+                  <div
+                    className="w-full rounded-t-md"
+                    style={{
+                      height: `${pct}%`,
+                      minHeight: '6px',
+                      backgroundColor: isWeekend ? '#22c55e' : '#bbf7d0',
+                    }}
+                  />
+                  <span className={`text-xs font-semibold ${isWeekend ? 'text-green-600' : 'text-gray-400'}`}>{d.day}</span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-3 text-center">土日合計: {weekdayData.filter(d=>d.day==='土'||d.day==='日').reduce((s,d)=>s+d.count,0)}件 / 平日合計: {weekdayData.filter(d=>d.day!=='土'&&d.day!=='日').reduce((s,d)=>s+d.count,0)}件</p>
+        </div>
+
+        {/* 時間帯別 */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-indigo-500 inline-block"/>
+            時間帯別 問い合わせ分布
+            <span className="ml-auto text-xs text-gray-400 font-normal">夜間が最多</span>
+          </h3>
+          <div className="flex items-end gap-2 h-32">
+            {hourData.map(d => {
+              const pct = (d.count / maxHour) * 100
+              const isPeak = d.hour === '18〜21時'
+              return (
+                <div key={d.hour} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-xs font-bold text-gray-600">{d.count}</span>
+                  <div
+                    className="w-full rounded-t-md"
+                    style={{
+                      height: `${pct}%`,
+                      minHeight: '6px',
+                      backgroundColor: isPeak ? '#4f46e5' : '#c7d2fe',
+                    }}
+                  />
+                  <span className={`text-[9px] font-medium text-center leading-tight ${isPeak ? 'text-indigo-600' : 'text-gray-400'}`}>{d.hour}</span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-3 text-center">ピーク: 18〜21時（仕事終わりの時間帯）</p>
+        </div>
+      </div>
+
+      {/* インサイト */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-5">
+        <h3 className="text-sm font-bold text-green-800 mb-3 flex items-center gap-2">
+          <MessageCircle size={15} className="text-green-600"/>
+          LINE問い合わせ インサイト
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-white rounded-lg p-3 border border-green-100">
+            <p className="text-xs font-bold text-gray-700 mb-1">土日の対応強化</p>
+            <p className="text-xs text-gray-500">土日の問い合わせが全体の約50%。週末の初動対応スピードが成約率に直結します。</p>
+          </div>
+          <div className="bg-white rounded-lg p-3 border border-green-100">
+            <p className="text-xs font-bold text-gray-700 mb-1">夜間通知の仕組み化</p>
+            <p className="text-xs text-gray-500">18〜21時が最多。自動返信＋翌朝のフォローアップをルール化すると取りこぼしが減ります。</p>
+          </div>
+          <div className="bg-white rounded-lg p-3 border border-green-100">
+            <p className="text-xs font-bold text-gray-700 mb-1">問い合わせ増加中</p>
+            <p className="text-xs text-gray-500">前月比 +{trend}% と増加傾向。対応キャパシティの見直しを検討してください。</p>
+          </div>
+        </div>
       </div>
     </div>
   )
