@@ -161,7 +161,14 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-red-500 uppercase tracking-wide">売却仲介</span>
-                <span className="text-xs text-gray-400">{sellCases.length}件</span>
+                <div className="flex items-center gap-3">
+                  {sellCases.filter(c => c.stage === '相談終了').length > 0 && (
+                    <span className="text-xs text-gray-400">
+                      相談終了: <span className="font-semibold text-gray-500">{sellCases.filter(c => c.stage === '相談終了').length}件</span>
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">{sellCases.filter(c => c.stage !== '相談終了').length}件</span>
+                </div>
               </div>
               <div className="flex gap-1.5">
                 {SELL_STAGES.map(stage => {
@@ -186,7 +193,14 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-blue-500 uppercase tracking-wide">購入仲介</span>
-                <span className="text-xs text-gray-400">{buyCases.length}件</span>
+                <div className="flex items-center gap-3">
+                  {buyCases.filter(c => c.stage === '相談終了').length > 0 && (
+                    <span className="text-xs text-gray-400">
+                      相談終了: <span className="font-semibold text-gray-500">{buyCases.filter(c => c.stage === '相談終了').length}件</span>
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">{buyCases.filter(c => c.stage !== '相談終了').length}件</span>
+                </div>
               </div>
               <div className="flex gap-1.5">
                 {BUY_STAGES.map(stage => {
