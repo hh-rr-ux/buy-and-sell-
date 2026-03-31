@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+
 import {
   LayoutDashboard,
   TrendingDown,
@@ -10,63 +10,25 @@ import {
   BarChart3,
   Lightbulb,
   Building2,
-  List,
-  ChevronDown,
-  ChevronRight,
+  ClipboardList,
 } from 'lucide-react'
-import { sellCases, buyCases, calcBrokerageFee, formatPrice } from '@/lib/mockData'
 
-const stageColor: Record<string, string> = {
-  '問い合わせ':    'bg-gray-500',
-  '査定':         'bg-blue-500',
-  '媒介契約':     'bg-purple-500',
-  '販売活動':     'bg-orange-500',
-  '内見':         'bg-cyan-500',
-  '購入申し込み':  'bg-indigo-500',
-  '売買契約':     'bg-yellow-500',
-  'ローン審査':   'bg-pink-500',
-  '決済':         'bg-green-500',
-}
-
-type FilterType = '全て' | '売却' | '購入'
+const navItems = [
+  { href: '/',             label: 'ダッシュボード', icon: LayoutDashboard },
+  { href: '/sell',         label: '売却仲介',       icon: TrendingDown },
+  { href: '/buy',          label: '購入仲介',       icon: ShoppingCart },
+  { href: '/cases',        label: '案件一覧',       icon: ClipboardList },
+  { href: '/analytics',   label: '分析',           icon: BarChart3 },
+  { href: '/suggestions',  label: 'AI改善提案',     icon: Lightbulb },
+]
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const [caseListOpen, setCaseListOpen] = useState(false)
-  const [filter, setFilter] = useState<FilterType>('全て')
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
-
-  // TODO: スプシ連携後は dataLoader.ts の fetchAllCases() に差し替え
-  const allCases = [
-    ...sellCases.map(c => ({
-      id: c.id, type: '売却' as const,
-      propertyName: c.propertyName, stage: c.stage,
-      staff: c.staff, price: c.askingPrice,
-      fee: calcBrokerageFee(c.askingPrice),
-    })),
-    ...buyCases.map(c => ({
-      id: c.id, type: '購入' as const,
-      propertyName: c.propertyName, stage: c.stage,
-      staff: c.staff, price: c.budget,
-      fee: calcBrokerageFee(c.budget),
-    })),
-  ]
-
-  const filtered = allCases.filter(c =>
-    filter === '全て' ? true : c.type === filter
-  )
-
-  const navItems = [
-    { href: '/',            label: 'ダッシュボード', icon: LayoutDashboard },
-    { href: '/sell',        label: '売却仲介',       icon: TrendingDown },
-    { href: '/buy',         label: '購入仲介',       icon: ShoppingCart },
-    { href: '/analytics',  label: '分析',           icon: BarChart3 },
-    { href: '/suggestions', label: 'AI改善提案',     icon: Lightbulb },
-  ]
 
   return (
     <aside
@@ -118,84 +80,6 @@ export default function Sidebar() {
             </li>
           ))}
 
-          {/* 案件一覧（アコーディオン） */}
-          <li>
-            <button
-              onClick={() => setCaseListOpen(v => !v)}
-              className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
-                caseListOpen
-                  ? 'text-white'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}
-              style={caseListOpen ? { backgroundColor: '#0f3460' } : {}}
-            >
-              <List size={15} className={caseListOpen ? 'text-[#e94560]' : ''} />
-              案件一覧
-              <span className="ml-auto">
-                {caseListOpen
-                  ? <ChevronDown size={12} />
-                  : <ChevronRight size={12} />
-                }
-              </span>
-            </button>
-
-            {/* 展開パネル */}
-            {caseListOpen && (
-              <div className="mt-1 ml-2 border-l border-white/10 pl-3">
-                {/* フィルタ */}
-                <div className="flex gap-1 mb-2 mt-1">
-                  {(['全て', '売却', '購入'] as FilterType[]).map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFilter(f)}
-                      className={`flex-1 text-[10px] py-1 rounded font-medium transition-colors ${
-                        filter === f
-                          ? 'text-white'
-                          : 'text-white/40 hover:text-white/70'
-                      }`}
-                      style={filter === f ? { backgroundColor: '#0f3460' } : {}}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-
-                {/* 案件リスト */}
-                <ul className="space-y-1 max-h-80 overflow-y-auto pr-1">
-                  {filtered.map(c => (
-                    <li
-                      key={c.id}
-                      className="px-2 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-default"
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span
-                          className={`flex-shrink-0 text-white text-[9px] font-bold px-1 py-0.5 rounded ${
-                            c.type === '売却' ? 'bg-red-600' : 'bg-blue-600'
-                          }`}
-                        >
-                          {c.type}
-                        </span>
-                        <p className="text-white/90 text-[11px] font-medium leading-tight truncate">
-                          {c.propertyName}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${stageColor[c.stage] ?? 'bg-gray-500'}`} />
-                        <span className="text-white/50 text-[10px] truncate">{c.stage}</span>
-                        <span className="text-white/30 text-[10px] ml-auto flex-shrink-0">{c.staff}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/40 text-[10px]">{formatPrice(c.price)}</span>
-                        <span className="text-[10px] font-medium" style={{ color: '#e94560' }}>
-                          手数料 {formatPrice(c.fee)}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </li>
         </ul>
       </nav>
 
