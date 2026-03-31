@@ -1,332 +1,370 @@
 export const dynamic = 'force-static'
 
 import {
-  TrendingDown,
-  ShoppingCart,
-  Users,
-  MessageSquare,
-  Target,
-  Clock,
-  Activity,
-  CheckCircle,
-  Eye,
-  FileText,
-  CreditCard,
-  AlertCircle,
+  TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
+  Clock, Users, ArrowRight, Banknote, Activity,
 } from 'lucide-react'
-import KPICard from '@/components/KPICard'
 import {
-  sellCases,
-  buyCases,
-  monthlyStats,
-  recentActivities,
+  sellCases, buyCases, monthlyStats, staffStats,
+  calcBrokerageFee, formatPrice,
 } from '@/lib/mockData'
 import { calculateKPIs } from '@/lib/dataLoader'
 
-function formatPrice(price: number): string {
-  if (price >= 100000000) {
-    return `${(price / 100000000).toFixed(1)}億円`
-  }
-  return `${(price / 10000).toLocaleString()}万円`
+const STAGE_COLORS: Record<string, string> = {
+  '問い合わせ': '#6b7280', '査定': '#3b82f6', '媒介契約': '#8b5cf6',
+  '販売活動': '#f97316', '内見': '#06b6d4', '購入申し込み': '#6366f1',
+  '売買契約': '#eab308', 'ローン審査': '#ec4899', '決済': '#22c55e',
 }
 
-const activityIcons: Record<string, React.ReactNode> = {
-  contract: <FileText size={16} className="text-purple-500" />,
-  inquiry: <MessageSquare size={16} className="text-blue-500" />,
-  viewing: <Eye size={16} className="text-cyan-500" />,
-  loan: <CreditCard size={16} className="text-pink-500" />,
-  settlement: <CheckCircle size={16} className="text-green-500" />,
-  application: <FileText size={16} className="text-orange-500" />,
-}
-
-const activityBg: Record<string, string> = {
-  contract: 'bg-purple-50',
-  inquiry: 'bg-blue-50',
-  viewing: 'bg-cyan-50',
-  loan: 'bg-pink-50',
-  settlement: 'bg-green-50',
-  application: 'bg-orange-50',
-}
-
-const stageColors: Record<string, string> = {
-  '問い合わせ': '#6b7280',
-  '査定': '#3b82f6',
-  '媒介契約': '#8b5cf6',
-  '販売活動': '#f97316',
-  '売買契約': '#eab308',
-  '決済': '#22c55e',
-  '内見': '#06b6d4',
-  '購入申し込み': '#6366f1',
-  'ローン審査': '#ec4899',
-}
+const SELL_STAGES = ['問い合わせ','査定','媒介契約','販売活動','売買契約','決済']
+const BUY_STAGES  = ['問い合わせ','内見','購入申し込み','売買契約','ローン審査','決済']
 
 export default function DashboardPage() {
   const kpis = calculateKPIs(sellCases, buyCases, monthlyStats)
 
-  const sellStageCount = ['問い合わせ', '査定', '媒介契約', '販売活動', '売買契約', '決済'].map((s) => ({
-    stage: s,
-    count: sellCases.filter((c) => c.stage === s).length,
-  }))
+  // パイプライン総額（全進行中案件の手数料合計）
+  const pipelineValue = [
+    ...sellCases.filter(c => c.stage !== '決済').map(c => calcBrokerageFee(c.askingPrice)),
+    ...buyCases.filter(c => c.stage !== '決済').map(c => calcBrokerageFee(c.budget)),
+  ].reduce((a, b) => a + b, 0)
 
-  const buyStageCount = ['問い合わせ', '内見', '購入申し込み', '売買契約', 'ローン審査', '決済'].map((s) => ({
-    stage: s,
-    count: buyCases.filter((c) => c.stage === s).length,
-  }))
-
-  const stalledCases = [
-    ...sellCases.filter((c) => c.daysInStage > 30).map((c) => ({
-      ...c, type: '売却' as const
+  // 決済間近（売買契約・ローン審査）
+  const nearClosing = [
+    ...sellCases.filter(c => c.stage === '売買契約' || c.stage === '決済').map(c => ({
+      id: c.id, name: c.propertyName, clientName: c.clientName,
+      stage: c.stage, staff: c.staff, fee: calcBrokerageFee(c.askingPrice), type: '売却',
     })),
-    ...buyCases.filter((c) => c.daysInStage > 30).map((c) => ({
-      ...c, type: '購入' as const, price: c.budget
+    ...buyCases.filter(c => c.stage === 'ローン審査' || c.stage === '売買契約' || c.stage === '決済').map(c => ({
+      id: c.id, name: c.propertyName, clientName: c.clientName,
+      stage: c.stage, staff: c.staff, fee: calcBrokerageFee(c.budget), type: '購入',
     })),
   ]
 
+  // 滞留案件（30日超）
+  const stalledCases = [
+    ...sellCases.filter(c => c.daysInStage > 30).map(c => ({
+      id: c.id, name: c.propertyName, clientName: c.clientName,
+      stage: c.stage, staff: c.staff, days: c.daysInStage, type: '売却',
+    })),
+    ...buyCases.filter(c => c.daysInStage > 30).map(c => ({
+      id: c.id, name: c.propertyName, clientName: c.clientName,
+      stage: c.stage, staff: c.staff, days: c.daysInStage, type: '購入',
+    })),
+  ]
+
+  // 先月比
+  const revenueUp = kpis.revenueTrend >= 0
+  const closedUp  = kpis.closedDealsTrend >= 0
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
-        <p className="text-gray-500 text-sm mt-1">2026年3月31日時点 — リアルタイム概況</p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-        <KPICard
-          title="今月の成約数"
-          value={`${kpis.monthlyClosedDeals}件`}
-          trend={kpis.closedDealsTrend}
-          trendLabel="先月比"
-          icon={<CheckCircle size={22} className="text-green-500" />}
-          iconBg="bg-green-50"
-          subtitle="売却2件・購入2件"
-        />
-        <KPICard
-          title="今月の見込み売上"
-          value={formatPrice(kpis.monthlyRevenue)}
-          trend={kpis.revenueTrend}
-          trendLabel="先月比"
-          icon={<Target size={22} className="text-blue-500" />}
-          iconBg="bg-blue-50"
-        />
-        <KPICard
-          title="進行中案件数"
-          value={`${kpis.activeCases}件`}
-          trend={kpis.activeCasesTrend}
-          trendLabel="先月比"
-          icon={<Activity size={22} className="text-orange-500" />}
-          iconBg="bg-orange-50"
-          subtitle={`売却${sellCases.filter(c => c.stage !== '決済').length}件・購入${buyCases.filter(c => c.stage !== '決済').length}件`}
-        />
-        <KPICard
-          title="今月の問い合わせ数"
-          value={`${kpis.monthlyInquiries}件`}
-          trend={kpis.inquiriesTrend}
-          trendLabel="先月比"
-          icon={<MessageSquare size={22} className="text-purple-500" />}
-          iconBg="bg-purple-50"
-        />
-        <KPICard
-          title="成約率"
-          value={`${kpis.conversionRate}%`}
-          icon={<TrendingDown size={22} className="text-pink-500" />}
-          iconBg="bg-pink-50"
-          subtitle="今月成約/問い合わせ"
-        />
-        <KPICard
-          title="平均案件期間"
-          value={`${kpis.avgDealDays}日`}
-          icon={<Clock size={22} className="text-cyan-500" />}
-          iconBg="bg-cyan-50"
-          subtitle="全進行中案件平均"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        {/* Pipeline Overview */}
-        <div className="xl:col-span-2 space-y-5">
-          {/* Sell Pipeline */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <TrendingDown size={18} className="text-red-400" />
-                <h2 className="text-base font-semibold text-gray-800">売却仲介パイプライン</h2>
-              </div>
-              <span className="text-xs text-gray-400">{sellCases.length}件</span>
+      {/* ━━━ Hero Banner ━━━ */}
+      <div className="px-6 py-6" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-white/50 text-xs font-medium uppercase tracking-widest mb-0.5">不動産売買 経営ダッシュボード</p>
+              <h1 className="text-white text-xl font-bold">2026年3月 — リアルタイム概況</h1>
             </div>
-            <div className="flex gap-2">
-              {sellStageCount.map(({ stage, count }) => (
-                <div key={stage} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full rounded-t-sm h-1.5 mb-1"
-                    style={{ backgroundColor: stageColors[stage] + '30' }}
-                  >
-                    <div
-                      className="h-full rounded-t-sm"
-                      style={{
-                        width: count > 0 ? '100%' : '0%',
-                        backgroundColor: stageColors[stage],
-                      }}
-                    />
-                  </div>
-                  <div
-                    className="w-full py-2 rounded flex flex-col items-center gap-1"
-                    style={{ backgroundColor: stageColors[stage] + '10' }}
-                  >
-                    <span
-                      className="text-lg font-bold"
-                      style={{ color: stageColors[stage] }}
-                    >
-                      {count}
-                    </span>
-                    <span className="text-xs text-gray-500 text-center leading-tight px-0.5"
-                      style={{ fontSize: '10px' }}>
-                      {stage}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <span className="text-white/40 text-xs">最終更新: 2026-03-31</span>
+          </div>
+
+          {/* 3大指標 */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* 今月売上 */}
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
+              <p className="text-white/50 text-xs mb-1">今月の売上（確定）</p>
+              <p className="text-white text-3xl font-black tracking-tight">{formatPrice(kpis.monthlyRevenue)}</p>
+              <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${revenueUp ? 'text-green-400' : 'text-red-400'}`}>
+                {revenueUp ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
+                先月比 {revenueUp ? '+' : ''}{kpis.revenueTrend}%
+              </div>
+            </div>
+
+            {/* パイプライン総額 */}
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
+              <p className="text-white/50 text-xs mb-1">パイプライン総額（見込手数料）</p>
+              <p className="text-white text-3xl font-black tracking-tight">{formatPrice(pipelineValue)}</p>
+              <p className="text-white/40 text-xs mt-2">進行中 {kpis.activeCases}件 の合計</p>
+            </div>
+
+            {/* 今月成約数 */}
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
+              <p className="text-white/50 text-xs mb-1">今月の成約数</p>
+              <p className="text-white text-3xl font-black tracking-tight">{kpis.monthlyClosedDeals}<span className="text-lg font-medium text-white/60 ml-1">件</span></p>
+              <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${closedUp ? 'text-green-400' : 'text-red-400'}`}>
+                {closedUp ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
+                先月比 {closedUp ? '+' : ''}{kpis.closedDealsTrend}%
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+
+        {/* ━━━ 4ステータスカード ━━━ */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <Activity size={20} className="text-blue-500"/>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">進行中案件</p>
+              <p className="text-2xl font-black text-gray-900">{kpis.activeCases}<span className="text-sm font-normal text-gray-400 ml-1">件</span></p>
             </div>
           </div>
 
-          {/* Buy Pipeline */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={18} className="text-blue-400" />
-                <h2 className="text-base font-semibold text-gray-800">購入仲介パイプライン</h2>
-              </div>
-              <span className="text-xs text-gray-400">{buyCases.length}件</span>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 size={20} className="text-green-500"/>
             </div>
-            <div className="flex gap-2">
-              {buyStageCount.map(({ stage, count }) => (
-                <div key={stage} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full rounded-t-sm h-1.5 mb-1"
-                    style={{ backgroundColor: stageColors[stage] + '30' }}
-                  >
-                    <div
-                      className="h-full rounded-t-sm"
-                      style={{
-                        width: count > 0 ? '100%' : '0%',
-                        backgroundColor: stageColors[stage],
-                      }}
-                    />
-                  </div>
-                  <div
-                    className="w-full py-2 rounded flex flex-col items-center gap-1"
-                    style={{ backgroundColor: stageColors[stage] + '10' }}
-                  >
-                    <span
-                      className="text-lg font-bold"
-                      style={{ color: stageColors[stage] }}
-                    >
-                      {count}
-                    </span>
-                    <span className="text-xs text-gray-500 text-center leading-tight px-0.5"
-                      style={{ fontSize: '10px' }}>
-                      {stage}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div>
+              <p className="text-gray-500 text-xs">決済間近</p>
+              <p className="text-2xl font-black text-gray-900">{nearClosing.length}<span className="text-sm font-normal text-gray-400 ml-1">件</span></p>
+              <p className="text-green-600 text-xs font-medium">{formatPrice(nearClosing.reduce((s,c)=>s+c.fee,0))}</p>
             </div>
           </div>
 
-          {/* Stalled Cases Alert */}
-          {stalledCases.length > 0 && (
-            <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertCircle size={16} className="text-orange-500" />
-                <h3 className="text-sm font-semibold text-orange-700">
-                  滞留注意 — 30日以上同ステージの案件
-                </h3>
+          <div className={`rounded-xl border shadow-sm p-4 flex items-center gap-4 ${stalledCases.length > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${stalledCases.length > 0 ? 'bg-red-100' : 'bg-gray-50'}`}>
+              <AlertCircle size={20} className={stalledCases.length > 0 ? 'text-red-500' : 'text-gray-400'}/>
+            </div>
+            <div>
+              <p className={`text-xs ${stalledCases.length > 0 ? 'text-red-500' : 'text-gray-500'}`}>要対応（滞留30日超）</p>
+              <p className={`text-2xl font-black ${stalledCases.length > 0 ? 'text-red-600' : 'text-gray-900'}`}>{stalledCases.length}<span className="text-sm font-normal text-gray-400 ml-1">件</span></p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+              <Banknote size={20} className="text-purple-500"/>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">今月問い合わせ</p>
+              <p className="text-2xl font-black text-gray-900">{kpis.monthlyInquiries}<span className="text-sm font-normal text-gray-400 ml-1">件</span></p>
+              <p className="text-purple-600 text-xs font-medium">成約率 {kpis.conversionRate}%</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ━━━ パイプライン進捗 ━━━ */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-indigo-500 inline-block"/>
+            パイプライン進捗
+          </h2>
+          <div className="space-y-4">
+            {/* 売却 */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-red-500 uppercase tracking-wide">売却仲介</span>
+                <span className="text-xs text-gray-400">{sellCases.length}件</span>
               </div>
-              <div className="space-y-2">
-                {stalledCases.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between bg-white rounded-lg px-3 py-2 text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-gray-400">{c.id}</span>
-                      <span className="font-medium text-gray-700">{c.clientName}</span>
-                      <span
-                        className="text-xs px-1.5 py-0.5 rounded-full font-medium text-white"
-                        style={{ backgroundColor: stageColors[c.stage] }}
-                      >
-                        {c.stage}
-                      </span>
+              <div className="flex gap-1.5">
+                {SELL_STAGES.map(stage => {
+                  const count = sellCases.filter(c => c.stage === stage).length
+                  const color = STAGE_COLORS[stage]
+                  return (
+                    <div key={stage} className="flex-1">
+                      <div className="h-8 rounded-lg flex items-center justify-center relative overflow-hidden"
+                        style={{ backgroundColor: color + '18', border: `1px solid ${color}30` }}>
+                        {count > 0 && (
+                          <span className="text-sm font-black" style={{ color }}>{count}</span>
+                        )}
+                      </div>
+                      <p className="text-center mt-1 text-gray-400 leading-tight" style={{ fontSize: '9px' }}>{stage}</p>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span className="text-orange-600 font-semibold">{c.daysInStage}日経過</span>
-                      <span>{c.staff}</span>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 購入 */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-blue-500 uppercase tracking-wide">購入仲介</span>
+                <span className="text-xs text-gray-400">{buyCases.length}件</span>
+              </div>
+              <div className="flex gap-1.5">
+                {BUY_STAGES.map(stage => {
+                  const count = buyCases.filter(c => c.stage === stage).length
+                  const color = STAGE_COLORS[stage]
+                  return (
+                    <div key={stage} className="flex-1">
+                      <div className="h-8 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: color + '18', border: `1px solid ${color}30` }}>
+                        {count > 0 && (
+                          <span className="text-sm font-black" style={{ color }}>{count}</span>
+                        )}
+                      </div>
+                      <p className="text-center mt-1 text-gray-400 leading-tight" style={{ fontSize: '9px' }}>{stage}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+
+          {/* ━━━ 決済間近案件 ━━━ */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+              <span className="w-1 h-4 rounded-full bg-green-500 inline-block"/>
+              決済間近 — 直近の売上予定
+              <span className="ml-auto text-green-600 text-xs font-bold">{formatPrice(nearClosing.reduce((s,c)=>s+c.fee,0))}</span>
+            </h2>
+            {nearClosing.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-4">該当案件なし</p>
+            ) : (
+              <div className="space-y-2">
+                {nearClosing.map(c => (
+                  <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-100">
+                    <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${c.type === '売却' ? 'bg-red-500' : 'bg-blue-500'}`}>{c.type}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+                      <p className="text-xs text-gray-500">{c.clientName}</p>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[c.stage] }}>{c.stage}</span>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-green-600">{formatPrice(c.fee)}</p>
+                      <p className="text-xs text-gray-400">{c.staff}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={18} className="text-gray-400" />
-            <h2 className="text-base font-semibold text-gray-800">最近の活動</h2>
+            )}
           </div>
-          <div className="space-y-3">
-            {recentActivities.map((act) => (
-              <div key={act.id} className="flex gap-3">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${activityBg[act.type] || 'bg-gray-50'}`}
-                >
-                  {activityIcons[act.type] || <Activity size={16} className="text-gray-400" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-700 leading-snug">{act.message}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                      {act.staff}
-                    </span>
-                    <span className="text-xs text-gray-400">{act.time}</span>
+
+          {/* ━━━ 要対応・滞留案件 ━━━ */}
+          <div className={`rounded-xl border shadow-sm p-5 ${stalledCases.length > 0 ? 'bg-white border-red-100' : 'bg-white border-gray-100'}`}>
+            <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+              <span className="w-1 h-4 rounded-full bg-red-500 inline-block"/>
+              要対応 — 30日以上同ステージで滞留
+              {stalledCases.length > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{stalledCases.length}件</span>
+              )}
+            </h2>
+            {stalledCases.length === 0 ? (
+              <div className="text-center py-4">
+                <CheckCircle2 size={28} className="text-green-400 mx-auto mb-1"/>
+                <p className="text-green-600 text-sm font-medium">滞留案件なし</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {stalledCases.map(c => (
+                  <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
+                    <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${c.type === '売却' ? 'bg-red-500' : 'bg-blue-500'}`}>{c.type}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+                      <p className="text-xs text-gray-500">{c.clientName}</p>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[c.stage] }}>{c.stage}</span>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-red-600">{c.days}日経過</p>
+                      <p className="text-xs text-gray-400">{c.staff}</p>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Staff Overview */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-gray-400" />
-          <h2 className="text-base font-semibold text-gray-800">担当者別 進行中案件</h2>
+        {/* ━━━ 担当者別進捗 ━━━ */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-purple-500 inline-block"/>
+            担当者別 進捗サマリー
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left pb-2 text-xs font-semibold text-gray-500">担当者</th>
+                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">売却</th>
+                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">購入</th>
+                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">合計案件</th>
+                  <th className="text-right pb-2 text-xs font-semibold text-gray-500">担当手数料合計</th>
+                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">今月成約</th>
+                  <th className="text-left pb-2 text-xs font-semibold text-gray-500 w-32">負荷</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffStats.map(s => {
+                  const sellCount = sellCases.filter(c => c.staff === s.name).length
+                  const buyCount  = buyCases.filter(c => c.staff === s.name).length
+                  const total     = sellCount + buyCount
+                  const fee = [
+                    ...sellCases.filter(c => c.staff === s.name).map(c => calcBrokerageFee(c.askingPrice)),
+                    ...buyCases.filter(c => c.staff === s.name).map(c => calcBrokerageFee(c.budget)),
+                  ].reduce((a, b) => a + b, 0)
+                  const loadPct = Math.min(100, Math.round((total / 6) * 100))
+                  const loadColor = loadPct >= 80 ? '#ef4444' : loadPct >= 60 ? '#f97316' : '#22c55e'
+                  return (
+                    <tr key={s.name} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-700 font-bold text-xs">{s.name}</div>
+                          <span className="font-medium text-gray-800">{s.name}</span>
+                        </div>
+                      </td>
+                      <td className="text-center py-3"><span className="bg-red-50 text-red-600 text-xs font-bold px-2 py-0.5 rounded">{sellCount}件</span></td>
+                      <td className="text-center py-3"><span className="bg-blue-50 text-blue-600 text-xs font-bold px-2 py-0.5 rounded">{buyCount}件</span></td>
+                      <td className="text-center py-3 font-bold text-gray-800">{total}件</td>
+                      <td className="text-right py-3 font-bold text-indigo-600">{formatPrice(fee)}</td>
+                      <td className="text-center py-3"><span className="bg-green-50 text-green-600 text-xs font-bold px-2 py-0.5 rounded">{s.closedThisMonth}件</span></td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                            <div className="h-1.5 rounded-full" style={{ width: `${loadPct}%`, backgroundColor: loadColor }}/>
+                          </div>
+                          <span className="text-xs text-gray-400 w-7">{loadPct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {['鈴木', '田中', '佐藤', '山田', '伊藤'].map((staff) => {
-            const staffSellCount = sellCases.filter((c) => c.staff === staff).length
-            const staffBuyCount = buyCases.filter((c) => c.staff === staff).length
-            const total = staffSellCount + staffBuyCount
-            return (
-              <div
-                key={staff}
-                className="border border-gray-100 rounded-xl p-4 text-center hover:border-blue-200 hover:shadow-sm transition-all"
-              >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center mx-auto mb-2 text-blue-700 font-bold text-sm">
-                  {staff}
+
+        {/* ━━━ 月次トレンド ━━━ */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-blue-500 inline-block"/>
+            月次売上トレンド（過去6ヶ月）
+          </h2>
+          <div className="flex items-end gap-3 h-28">
+            {monthlyStats.map((m, i) => {
+              const maxRevenue = Math.max(...monthlyStats.map(s => s.revenue))
+              const heightPct  = (m.revenue / maxRevenue) * 100
+              const isCurrent  = i === monthlyStats.length - 1
+              return (
+                <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
+                  <span className={`text-xs font-bold ${isCurrent ? 'text-indigo-600' : 'text-gray-500'}`}>
+                    {formatPrice(m.revenue)}
+                  </span>
+                  <div className="w-full rounded-t-md transition-all"
+                    style={{
+                      height: `${heightPct}%`,
+                      minHeight: '8px',
+                      backgroundColor: isCurrent ? '#4f46e5' : '#e0e7ff',
+                    }}
+                  />
+                  <span className="text-gray-400 text-center" style={{ fontSize: '9px' }}>
+                    {m.month.replace('202', '').replace('年', '/')}
+                  </span>
                 </div>
-                <p className="text-lg font-bold text-gray-900">{total}</p>
-                <p className="text-xs text-gray-400 mb-2">担当案件</p>
-                <div className="flex gap-1 justify-center text-xs">
-                  <span className="bg-red-50 text-red-600 px-1.5 py-0.5 rounded">売{staffSellCount}</span>
-                  <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">買{staffBuyCount}</span>
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
+
       </div>
     </div>
   )
