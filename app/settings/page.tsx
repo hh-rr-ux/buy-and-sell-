@@ -221,6 +221,8 @@ function ResourceTab() {
 
 // ─── スタッフ評価タブ ─────────────────────────────────────────────────
 
+import type { EvalCriterion } from '@/lib/mockData'
+
 const RANK_COLOR: Record<string, string> = {
   S: 'bg-yellow-50 text-yellow-600 border-yellow-200',
   A: 'bg-blue-50 text-blue-600 border-blue-200',
@@ -228,22 +230,66 @@ const RANK_COLOR: Record<string, string> = {
   C: 'bg-red-50 text-red-500 border-red-100',
 }
 
-function ScoreBar({ label, value }: { label: string; value: number }) {
+const SCORE_COLOR = (s: number) =>
+  s >= 4 ? 'bg-blue-400' : s >= 3 ? 'bg-green-400' : s >= 2 ? 'bg-amber-400' : 'bg-red-400'
+
+function CriterionDetail({ label, criterion }: { label: string; criterion: EvalCriterion }) {
+  const [expanded, setExpanded] = useState(false)
   return (
-    <div>
-      <div className="flex justify-between mb-0.5">
-        <span className="text-[11px] text-gray-500">{label}</span>
-        <span className="text-[11px] font-semibold text-gray-700">{value}/5</span>
-      </div>
-      <div className="w-full bg-gray-100 rounded-full h-1.5">
-        <div className="h-1.5 rounded-full bg-indigo-400" style={{ width: `${(value / 5) * 100}%` }} />
-      </div>
+    <div className="border border-gray-100 rounded-lg overflow-hidden">
+      <button
+        className="w-full flex items-center gap-3 px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold text-gray-600">{label}</span>
+            <span className="text-[11px] font-bold text-gray-700 ml-2">{criterion.score} / 5</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div className={`h-1.5 rounded-full ${SCORE_COLOR(criterion.score)}`} style={{ width: `${(criterion.score / 5) * 100}%` }} />
+          </div>
+        </div>
+        <span className="text-gray-300 text-xs flex-shrink-0">{expanded ? '▲' : '▼'}</span>
+      </button>
+
+      {expanded && (
+        <div className="px-3 py-3 space-y-2.5 bg-white">
+          {/* 判断理由 */}
+          <div className="text-xs text-gray-700 leading-relaxed bg-indigo-50 border-l-2 border-indigo-300 px-2.5 py-2 rounded-r-lg">
+            <span className="font-semibold text-indigo-700 block mb-0.5">判断理由</span>
+            {criterion.rationale}
+          </div>
+          {/* 根拠メッセージ・データ */}
+          <div className="space-y-1.5">
+            {criterion.evidence.map((ev, i) => (
+              <div key={i} className={`rounded-lg px-2.5 py-2 text-xs leading-relaxed ${
+                ev.type === 'message'
+                  ? 'bg-gray-50 border border-gray-100'
+                  : 'bg-blue-50 border border-blue-100'
+              }`}>
+                <span className={`text-[10px] font-bold block mb-0.5 ${ev.type === 'message' ? 'text-gray-400' : 'text-blue-400'}`}>
+                  {ev.type === 'message' ? '💬 チャット引用' : '📊 案件データ'} — {ev.label}
+                </span>
+                <span className="text-gray-600">{ev.content}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function EvalTab() {
   const [open, setOpen] = useState<Staff | null>(null)
+
+  const criteria: { key: 'responseSpeed' | 'customerHandling' | 'caseProgress' | 'teamContrib'; label: string }[] = [
+    { key: 'responseSpeed',    label: '対応速度・即応性' },
+    { key: 'customerHandling', label: 'お客様対応の質' },
+    { key: 'caseProgress',     label: '案件推進力' },
+    { key: 'teamContrib',      label: 'チーム連携・情報共有' },
+  ]
 
   return (
     <div>
@@ -266,51 +312,46 @@ function EvalTab() {
                 {ev.staff[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-bold text-gray-800">{ev.staff}</span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded border ${RANK_COLOR[ev.rank]}`}>
                     ランク {ev.rank}
                   </span>
+                  <span className="text-xs text-gray-500 ml-auto">{ev.totalScore}点</span>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  {[1,2,3,4,5].map(i => (
-                    <Star key={i} size={11} className={i <= Math.round(ev.score / 20) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'} />
+                {/* 4軸のミニバー */}
+                <div className="grid grid-cols-4 gap-1">
+                  {criteria.map(c => (
+                    <div key={c.key}>
+                      <div className="w-full bg-gray-100 rounded-full h-1">
+                        <div className={`h-1 rounded-full ${SCORE_COLOR(ev[c.key].score)}`} style={{ width: `${(ev[c.key].score / 5) * 100}%` }} />
+                      </div>
+                    </div>
                   ))}
-                  <span className="text-xs text-gray-500 ml-1">{ev.score}点</span>
                 </div>
               </div>
-              <span className="text-gray-300 text-sm">{open === ev.staff ? '▲' : '▼'}</span>
+              <span className="text-gray-300 text-sm ml-2 flex-shrink-0">{open === ev.staff ? '▲' : '▼'}</span>
             </button>
 
             {/* 詳細（展開） */}
             {open === ev.staff && (
-              <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-4">
-                {/* スコアバー */}
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                  <ScoreBar label="対応速度・即応性" value={ev.responseSpeed} />
-                  <ScoreBar label="お客様対応" value={ev.customerHandling} />
-                  <ScoreBar label="案件推進力" value={ev.caseProgress} />
-                  <ScoreBar label="チーム連携・情報共有" value={ev.teamContrib} />
+              <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
+                {/* 総合所見 */}
+                <div className="bg-gray-50 rounded-lg px-3 py-2.5 text-xs text-gray-700 leading-relaxed">
+                  <span className="text-[10px] font-bold text-gray-400 block mb-0.5">総合所見</span>
+                  {ev.summary}
                 </div>
 
-                {/* 評価根拠 */}
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-500 mb-1.5 flex items-center gap-1">
-                    <MessageSquare size={11} />
-                    チャット分析・評価根拠
-                  </p>
-                  <div className="space-y-1.5">
-                    {ev.chatEvidence.map((e, i) => (
-                      <div key={i} className="bg-gray-50 rounded-lg p-2.5 text-xs text-gray-600 leading-relaxed border-l-2 border-indigo-200">
-                        {e}
-                      </div>
-                    ))}
-                  </div>
+                {/* 各軸の詳細（折りたたみ） */}
+                <div className="space-y-2">
+                  {criteria.map(c => (
+                    <CriterionDetail key={c.key} label={c.label} criterion={ev[c.key]} />
+                  ))}
                 </div>
 
                 {/* 改善提案 */}
                 <div className="bg-amber-50 border border-amber-100 rounded-lg p-2.5">
-                  <p className="text-[11px] font-semibold text-amber-700 mb-1">改善提案</p>
+                  <p className="text-[10px] font-bold text-amber-600 mb-1">改善提案</p>
                   <p className="text-xs text-amber-700 leading-relaxed">{ev.improvementPoint}</p>
                 </div>
               </div>
