@@ -5,7 +5,7 @@ import {
   Banknote, Activity,
 } from 'lucide-react'
 import {
-  sellCases, buyCases, monthlyStats, staffStats,
+  sellCases, buyCases, monthlyStats,
   lineInquiries, chatworkRooms,
   calcBrokerageFee, formatPrice,
 } from '@/lib/mockData'
@@ -272,65 +272,6 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* ━━━ 担当者別進捗 ━━━ */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-            <span className="w-1 h-4 rounded-full bg-purple-500 inline-block"/>
-            担当者別 進捗サマリー
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left pb-2 text-xs font-semibold text-gray-500">担当者</th>
-                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">売却</th>
-                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">購入</th>
-                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">合計案件</th>
-                  <th className="text-right pb-2 text-xs font-semibold text-gray-500">担当手数料合計</th>
-                  <th className="text-center pb-2 text-xs font-semibold text-gray-500">今月成約</th>
-                  <th className="text-left pb-2 text-xs font-semibold text-gray-500 w-32">負荷</th>
-                </tr>
-              </thead>
-              <tbody>
-                {staffStats.map(s => {
-                  const sellCount = sellCases.filter(c => c.staff === s.name).length
-                  const buyCount  = buyCases.filter(c => c.staff === s.name).length
-                  const total     = sellCount + buyCount
-                  const fee = [
-                    ...sellCases.filter(c => c.staff === s.name).map(c => calcBrokerageFee(c.askingPrice)),
-                    ...buyCases.filter(c => c.staff === s.name).map(c => calcBrokerageFee(c.budget)),
-                  ].reduce((a, b) => a + b, 0)
-                  const loadPct = Math.min(100, Math.round((total / 6) * 100))
-                  const loadColor = loadPct >= 80 ? '#ef4444' : loadPct >= 60 ? '#f97316' : '#22c55e'
-                  return (
-                    <tr key={s.name} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-700 font-bold text-xs">{s.name}</div>
-                          <span className="font-medium text-gray-800">{s.name}</span>
-                        </div>
-                      </td>
-                      <td className="text-center py-3"><span className="bg-red-50 text-red-600 text-xs font-bold px-2 py-0.5 rounded">{sellCount}件</span></td>
-                      <td className="text-center py-3"><span className="bg-blue-50 text-blue-600 text-xs font-bold px-2 py-0.5 rounded">{buyCount}件</span></td>
-                      <td className="text-center py-3 font-bold text-gray-800">{total}件</td>
-                      <td className="text-right py-3 font-bold text-indigo-600">{formatPrice(fee)}</td>
-                      <td className="text-center py-3"><span className="bg-green-50 text-green-600 text-xs font-bold px-2 py-0.5 rounded">{s.closedThisMonth}件</span></td>
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                            <div className="h-1.5 rounded-full" style={{ width: `${loadPct}%`, backgroundColor: loadColor }}/>
-                          </div>
-                          <span className="text-xs text-gray-400 w-7">{loadPct}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
           </div>
         </div>
 
