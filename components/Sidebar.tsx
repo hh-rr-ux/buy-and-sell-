@@ -9,15 +9,13 @@ import {
   Lightbulb,
   Building2,
   ClipboardList,
-  Settings,
 } from 'lucide-react'
 
 const navItems = [
-  { href: '/',             label: 'ダッシュボード', icon: LayoutDashboard },
-  { href: '/cases',        label: '案件一覧',       icon: ClipboardList },
-  { href: '/analytics',   label: '分析',           icon: BarChart3 },
-  { href: '/suggestions',  label: 'AI改善',         icon: Lightbulb },
-  { href: '/settings',     label: '設定',           icon: Settings },
+  { href: '/',            label: 'ダッシュボード', icon: LayoutDashboard },
+  { href: '/cases',       label: '案件一覧',       icon: ClipboardList },
+  { href: '/analytics',  label: '分析',           icon: BarChart3 },
+  { href: '/suggestions', label: 'AI改善',         icon: Lightbulb },
 ]
 
 export default function Sidebar() {

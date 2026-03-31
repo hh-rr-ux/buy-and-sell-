@@ -1,8 +1,8 @@
-export const dynamic = 'force-static'
+'use client'
 
-import { Settings, CheckCircle2, XCircle } from 'lucide-react'
+import { Settings, CheckCircle2, XCircle, Calendar } from 'lucide-react'
 import { getEnvStatus } from '@/lib/config'
-import { Calendar } from 'lucide-react'
+import SettingsPinGate from '@/components/SettingsPinGate'
 
 function StatusRow({ label, configured, varName }: { label: string; configured: boolean; varName: string }) {
   return (
@@ -24,32 +24,32 @@ function StatusRow({ label, configured, varName }: { label: string; configured: 
   )
 }
 
-export default function SettingsPage() {
+function SettingsContent() {
   const status = getEnvStatus()
 
   const chatworkItems = [
-    { label: 'Chatwork APIトークン',  configured: status.chatworkToken,        varName: 'CHATWORK_API_TOKEN' },
-    { label: '運用チャット ルームID', configured: status.chatworkOperations,   varName: 'CHATWORK_ROOM_OPERATIONS' },
-    { label: 'HP,LINEチャット ルームID', configured: status.chatworkHpLine,    varName: 'CHATWORK_ROOM_HP_LINE' },
-    { label: '求人チャット ルームID', configured: status.chatworkRecruitment,  varName: 'CHATWORK_ROOM_RECRUITMENT' },
-    { label: '通知チャット ルームID', configured: status.chatworkNotification, varName: 'CHATWORK_ROOM_NOTIFICATION' },
-    { label: 'メッセージチャット ルームID', configured: status.chatworkCustomer, varName: 'CHATWORK_ROOM_CUSTOMER' },
+    { label: 'Chatwork APIトークン',       configured: status.chatworkToken,        varName: 'CHATWORK_API_TOKEN' },
+    { label: '運用チャット ルームID',       configured: status.chatworkOperations,   varName: 'CHATWORK_ROOM_OPERATIONS' },
+    { label: 'HP,LINEチャット ルームID',   configured: status.chatworkHpLine,       varName: 'CHATWORK_ROOM_HP_LINE' },
+    { label: '求人チャット ルームID',       configured: status.chatworkRecruitment,  varName: 'CHATWORK_ROOM_RECRUITMENT' },
+    { label: '通知チャット ルームID',       configured: status.chatworkNotification, varName: 'CHATWORK_ROOM_NOTIFICATION' },
+    { label: 'メッセージチャット ルームID', configured: status.chatworkCustomer,     varName: 'CHATWORK_ROOM_CUSTOMER' },
   ]
 
   const sheetsItems = [
-    { label: 'スプレッドシートID',      configured: status.googleSheetsId,       varName: 'GOOGLE_SHEETS_ID' },
-    { label: 'Google Sheets APIキー',   configured: status.googleSheetsApiKey,   varName: 'GOOGLE_SHEETS_API_KEY' },
-    { label: '案件管理シート範囲',       configured: status.googleSheetsCasesRange, varName: 'GOOGLE_SHEETS_CASES_RANGE' },
-    { label: 'LINE問い合わせシート範囲', configured: status.googleSheetsLineRange,  varName: 'GOOGLE_SHEETS_LINE_RANGE' },
+    { label: 'スプレッドシートID',          configured: status.googleSheetsId,          varName: 'GOOGLE_SHEETS_ID' },
+    { label: 'Google Sheets APIキー',       configured: status.googleSheetsApiKey,       varName: 'GOOGLE_SHEETS_API_KEY' },
+    { label: '案件管理シート範囲',           configured: status.googleSheetsCasesRange,   varName: 'GOOGLE_SHEETS_CASES_RANGE' },
+    { label: 'LINE問い合わせシート範囲',     configured: status.googleSheetsLineRange,    varName: 'GOOGLE_SHEETS_LINE_RANGE' },
   ]
 
   const calendarItems = [
-    { label: 'カレンダーID',            configured: status.googleCalendarId,   varName: 'GOOGLE_CALENDAR_ID' },
-    { label: '認証情報（サービスアカウント or OAuth）', configured: status.googleCalendarAuth, varName: 'GOOGLE_SERVICE_ACCOUNT_KEY または GOOGLE_OAUTH_*' },
+    { label: 'カレンダーID',                                    configured: status.googleCalendarId,   varName: 'GOOGLE_CALENDAR_ID' },
+    { label: '認証情報（サービスアカウント or OAuth）',           configured: status.googleCalendarAuth, varName: 'GOOGLE_SERVICE_ACCOUNT_KEY または GOOGLE_OAUTH_*' },
   ]
 
   const chatworkConfigured = chatworkItems.filter(i => i.configured).length
-  const sheetsConfigured = sheetsItems.filter(i => i.configured).length
+  const sheetsConfigured   = sheetsItems.filter(i => i.configured).length
   const calendarConfigured = calendarItems.filter(i => i.configured).length
 
   return (
@@ -149,5 +149,13 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <SettingsPinGate>
+      <SettingsContent />
+    </SettingsPinGate>
   )
 }
