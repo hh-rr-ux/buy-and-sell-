@@ -150,11 +150,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ━━━ パイプライン進捗 ━━━ */}
+        {/* ━━━ ステータス（お客様の進捗） ━━━ */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
             <span className="w-1 h-4 rounded-full bg-indigo-500 inline-block"/>
-            パイプライン進捗
+            ステータス（お客様の進捗）
           </h2>
           <div className="space-y-4">
             {/* 売却 */}
