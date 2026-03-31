@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Settings, CheckCircle2, XCircle, Calendar,
   TrendingUp, Users, Star, MessageSquare, AlertCircle,
@@ -8,13 +8,14 @@ import {
 import { getEnvStatus } from '@/lib/config'
 import {
   sellCases, buyCases, STAFF_LIST,
-  mockStaffEvaluations, type Staff,
+  mockStaffEvaluations, type Staff, type EvalCriterion,
 } from '@/lib/mockData'
 import SettingsPinGate, { SettingsLogoutButton } from '@/components/SettingsPinGate'
 
 // ─── API設定タブ ──────────────────────────────────────────────────────
 
 function StatusRow({ label, configured, varName }: { label: string; configured: boolean; varName: string }) {
+
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
       {configured
@@ -34,10 +35,29 @@ function StatusRow({ label, configured, varName }: { label: string; configured: 
   )
 }
 
+type SectionItem = { label: string; configured: boolean; varName: string }
+
+function ApiSection({ title, icon, items }: {
+  title: string; icon: React.ReactNode; items: SectionItem[]
+}) {
+  const configured = items.filter(i => i.configured).length
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5 mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">{icon}<h2 className="text-sm font-bold text-gray-700">{title}</h2></div>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+          configured === items.length ? 'bg-green-50 text-green-600' : configured > 0 ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-500'
+        }`}>{configured} / {items.length} 設定済み</span>
+      </div>
+      <div>{items.map(item => <StatusRow key={item.varName} {...item} />)}</div>
+    </div>
+  )
+}
+
 function ApiTab() {
   const status = getEnvStatus()
 
-  const chatworkItems = [
+  const chatworkItems: SectionItem[] = [
     { label: 'Chatwork APIトークン',       configured: status.chatworkToken,        varName: 'CHATWORK_API_TOKEN' },
     { label: '運用チャット ルームID',       configured: status.chatworkOperations,   varName: 'CHATWORK_ROOM_OPERATIONS' },
     { label: 'HP,LINEチャット ルームID',   configured: status.chatworkHpLine,       varName: 'CHATWORK_ROOM_HP_LINE' },
@@ -45,34 +65,16 @@ function ApiTab() {
     { label: '通知チャット ルームID',       configured: status.chatworkNotification, varName: 'CHATWORK_ROOM_NOTIFICATION' },
     { label: 'メッセージチャット ルームID', configured: status.chatworkCustomer,     varName: 'CHATWORK_ROOM_CUSTOMER' },
   ]
-  const sheetsItems = [
+  const sheetsItems: SectionItem[] = [
     { label: 'スプレッドシートID',          configured: status.googleSheetsId,          varName: 'GOOGLE_SHEETS_ID' },
     { label: 'Google Sheets APIキー',       configured: status.googleSheetsApiKey,       varName: 'GOOGLE_SHEETS_API_KEY' },
     { label: '案件管理シート範囲',           configured: status.googleSheetsCasesRange,   varName: 'GOOGLE_SHEETS_CASES_RANGE' },
     { label: 'LINE問い合わせシート範囲',     configured: status.googleSheetsLineRange,    varName: 'GOOGLE_SHEETS_LINE_RANGE' },
   ]
-  const calendarItems = [
+  const calendarItems: SectionItem[] = [
     { label: 'カレンダーID',                                    configured: status.googleCalendarId,   varName: 'GOOGLE_CALENDAR_ID' },
     { label: '認証情報（サービスアカウント or OAuth）',           configured: status.googleCalendarAuth, varName: 'GOOGLE_SERVICE_ACCOUNT_KEY または GOOGLE_OAUTH_*' },
   ]
-
-  const cw = chatworkItems.filter(i => i.configured).length
-  const sh = sheetsItems.filter(i => i.configured).length
-  const ca = calendarItems.filter(i => i.configured).length
-
-  const Section = ({ title, icon, items, configured, total }: {
-    title: string; icon: React.ReactNode; items: typeof chatworkItems; configured: number; total: number
-  }) => (
-    <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5 mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">{icon}<h2 className="text-sm font-bold text-gray-700">{title}</h2></div>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-          configured === total ? 'bg-green-50 text-green-600' : configured > 0 ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-500'
-        }`}>{configured} / {total} 設定済み</span>
-      </div>
-      <div>{items.map(item => <StatusRow key={item.varName} {...item} />)}</div>
-    </div>
-  )
 
   return (
     <div>
@@ -81,9 +83,9 @@ function ApiTab() {
         <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">Settings &gt; Secrets and variables &gt; Actions</span>{' '}
         から登録してください。
       </p>
-      <Section title="Chatwork API" icon={<MessageSquare size={13} className="text-orange-400" />} items={chatworkItems} configured={cw} total={chatworkItems.length} />
-      <Section title="Google Sheets API" icon={<CheckCircle2 size={13} className="text-green-500" />} items={sheetsItems} configured={sh} total={sheetsItems.length} />
-      <Section title="Google Calendar API" icon={<Calendar size={13} className="text-blue-500" />} items={calendarItems} configured={ca} total={calendarItems.length} />
+      <ApiSection title="Chatwork API" icon={<MessageSquare size={13} className="text-orange-400" />} items={chatworkItems} />
+      <ApiSection title="Google Sheets API" icon={<CheckCircle2 size={13} className="text-green-500" />} items={sheetsItems} />
+      <ApiSection title="Google Calendar API" icon={<Calendar size={13} className="text-blue-500" />} items={calendarItems} />
 
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
         <h2 className="text-sm font-bold text-blue-700 mb-2">スプレッドシート構成</h2>
@@ -105,8 +107,8 @@ function ApiTab() {
 // ─── 担当者別売上・リソースタブ ───────────────────────────────────────
 
 function ResourceTab() {
-  // 担当者別集計
-  const staffStats = STAFF_LIST.map(name => {
+  // 担当者別集計（mockデータは不変なので useMemo でキャッシュ）
+  const staffStats = useMemo(() => STAFF_LIST.map(name => {
     const sells = sellCases.filter(c => c.staff === name)
     const buys  = buyCases.filter(c => c.staff === name)
     const allCases = [...sells, ...buys]
@@ -132,7 +134,7 @@ function ResourceTab() {
       capacity,
       utilizationPct: Math.min(100, Math.round((activeCases.length / capacity) * 100)),
     }
-  })
+  }), [])
 
   const maxRevenue = Math.max(...staffStats.map(s => s.totalRevenue), 1)
 
@@ -213,15 +215,13 @@ function ResourceTab() {
             )
           })}
         </div>
-        <p className="text-[11px] text-gray-400 mt-3">※ 適正件数（{staffStats[0]?.capacity}件）はスプレッドシート連携後に実績値に更新されます。</p>
+        <p className="text-[11px] text-gray-400 mt-3">※ 適正件数（{staffStats[0].capacity}件）はスプレッドシート連携後に実績値に更新されます。</p>
       </div>
     </div>
   )
 }
 
 // ─── スタッフ評価タブ ─────────────────────────────────────────────────
-
-import type { EvalCriterion } from '@/lib/mockData'
 
 const RANK_COLOR: Record<string, string> = {
   S: 'bg-yellow-50 text-yellow-600 border-yellow-200',

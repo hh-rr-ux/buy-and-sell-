@@ -24,6 +24,8 @@ export function SettingsLogoutButton() {
   )
 }
 
+const MAX_ATTEMPTS = 5
+
 export default function SettingsPinGate({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false)
   const [id, setId] = useState('')
@@ -31,19 +33,24 @@ export default function SettingsPinGate({ children }: { children: React.ReactNod
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState(false)
   const [checked, setChecked] = useState(false)
+  const [attempts, setAttempts] = useState(0)
 
   useEffect(() => {
     if (sessionStorage.getItem(STORAGE_KEY) === 'ok') setAuthed(true)
     setChecked(true)
   }, [])
 
+  const locked = attempts >= MAX_ATTEMPTS
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (locked) return
     if (id === CORRECT_ID && pw === CORRECT_PW) {
       sessionStorage.setItem(STORAGE_KEY, 'ok')
       setAuthed(true)
       setError(false)
     } else {
+      setAttempts(v => v + 1)
       setError(true)
       setPw('')
     }
@@ -100,10 +107,20 @@ export default function SettingsPinGate({ children }: { children: React.ReactNod
               </button>
             </div>
           </div>
-          {error && <p className="text-xs text-red-400 text-center">IDまたはパスワードが正しくありません</p>}
+          {error && !locked && (
+            <p className="text-xs text-red-400 text-center">
+              IDまたはパスワードが正しくありません（あと{MAX_ATTEMPTS - attempts}回）
+            </p>
+          )}
+          {locked && (
+            <p className="text-xs text-red-500 text-center font-medium">
+              試行回数の上限に達しました。ページを再読み込みしてください。
+            </p>
+          )}
           <button
             type="submit"
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1"
+            disabled={locked}
+            className="w-full bg-gray-800 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1"
           >
             ログイン
           </button>
