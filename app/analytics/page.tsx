@@ -20,7 +20,7 @@ import {
   LineChart,
   Line,
 } from 'recharts'
-import { BarChart3, TrendingUp, Users, Target, MessageCircle, MapPin } from 'lucide-react'
+import { BarChart3, TrendingUp, Target, MessageCircle, MapPin } from 'lucide-react'
 import { monthlyStats, staffStats, conversionFunnel, sellCases, buyCases, lineInquiries, SELL_AREAS, BUY_AREAS, formatPrice } from '@/lib/mockData'
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f97316', '#eab308', '#22c55e']
@@ -40,13 +40,6 @@ const revenueData = monthlyStats.map((m) => ({
   revenueM: Math.round(m.revenue / 10000),
 }))
 
-const staffPerformance = staffStats.map((s, i) => ({
-  name: s.name,
-  進行中: s.activeCases,
-  今月成約: s.closedThisMonth,
-  平均日数: s.avgDays,
-  fill: STAFF_COLORS[i],
-}))
 
 const CustomTooltip = ({ active, payload, label }: {
   active?: boolean
@@ -180,35 +173,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Staff Performance */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Users size={16} className="text-green-400" />
-            <h2 className="text-base font-semibold text-gray-800">担当者別パフォーマンス</h2>
-          </div>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart
-              data={staffPerformance}
-              margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-              layout="vertical"
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                tick={{ fontSize: 12, fill: '#374151' }}
-                width={35}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-              <Bar dataKey="進行中" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-              <Bar dataKey="今月成約" fill="#22c55e" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
+      <div className="mb-6">
         {/* Revenue Trend */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-2 mb-4">
