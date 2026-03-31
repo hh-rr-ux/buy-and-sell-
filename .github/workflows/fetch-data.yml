@@ -1,0 +1,96 @@
+name: Fetch Data from Chatwork & Google Sheets
+
+# このワークフローは Chatwork と Google Sheets からデータを取得し、
+# lib/mockData.ts を実データで更新します。
+# 現在は TODO のプレースホルダーのみで、実装が必要です。
+
+on:
+  # 毎日9時（JST）に自動実行
+  schedule:
+    - cron: '0 0 * * *'  # UTC 0:00 = JST 9:00
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  fetch-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ==============================================================
+      # TODO: Chatwork API からデータを取得する
+      # 事前に以下の Secret を GitHub リポジトリに設定してください:
+      #   Settings > Secrets and variables > Actions > New repository secret
+      #   - CHATWORK_API_TOKEN: Chatwork の API トークン
+      #   - CHATWORK_ROOM_ID: 対象のルーム ID
+      # ==============================================================
+      - name: Fetch Chatwork messages
+        run: |
+          echo "TODO: Chatwork API からメッセージを取得する実装が必要です"
+          # 実装例:
+          # curl -H "X-ChatWorkToken: ${{ secrets.CHATWORK_API_TOKEN }}" \
+          #   "https://api.chatwork.com/v2/rooms/${{ secrets.CHATWORK_ROOM_ID }}/messages" \
+          #   -o chatwork_messages.json
+        env:
+          CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
+          CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
+
+      # ==============================================================
+      # TODO: Google Sheets API からデータを取得する
+      # 事前に以下の Secret を GitHub リポジトリに設定してください:
+      #   - GOOGLE_SHEETS_API_KEY: Google Sheets API キー
+      #     (または GOOGLE_SERVICE_ACCOUNT_JSON: サービスアカウントの JSON)
+      #   - GOOGLE_SHEETS_ID: スプレッドシートの ID
+      # ==============================================================
+      - name: Fetch Google Sheets data
+        run: |
+          echo "TODO: Google Sheets API からデータを取得する実装が必要です"
+          # 実装例（API Keyを使う場合）:
+          # curl "https://sheets.googleapis.com/v4/spreadsheets/${{ secrets.GOOGLE_SHEETS_ID }}/values/売却案件!A:Z?key=${{ secrets.GOOGLE_SHEETS_API_KEY }}" \
+          #   -o sell_cases.json
+          # curl "https://sheets.googleapis.com/v4/spreadsheets/${{ secrets.GOOGLE_SHEETS_ID }}/values/購入案件!A:Z?key=${{ secrets.GOOGLE_SHEETS_API_KEY }}" \
+          #   -o buy_cases.json
+        env:
+          GOOGLE_SHEETS_API_KEY: ${{ secrets.GOOGLE_SHEETS_API_KEY }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+
+      # ==============================================================
+      # TODO: 取得したデータを lib/mockData.ts に変換・書き込む
+      # Node.js スクリプトで JSON を TypeScript に変換する処理を実装してください
+      # ==============================================================
+      - name: Transform and write data
+        run: |
+          echo "TODO: データ変換・書き込みスクリプトの実装が必要です"
+          # 実装例:
+          # node scripts/transform-data.js
+
+      # データが更新された場合のみコミット・プッシュ
+      - name: Commit and push if data changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add lib/mockData.ts || true
+          git diff --staged --quiet || git commit -m "chore: update data from API [$(date '+%Y-%m-%d %H:%M')]"
+          git push || true
+
+      # データ更新後に自動的に再デプロイをトリガー
+      - name: Trigger deploy
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: 'main'
+            })
