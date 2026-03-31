@@ -23,6 +23,7 @@ export interface SellCase {
   propertyAddress: string
   propertyType: string
   askingPrice: number    // 物件価格（円）
+  brokerageFee: number   // 仲介手数料（スプシから直接取得）
   stage: SellStage
   staff: Staff
   startDate: string
@@ -38,6 +39,7 @@ export interface BuyCase {
   desiredArea: string
   propertyType: string
   budget: number         // 予算（円）
+  brokerageFee: number   // 仲介手数料（スプシから直接取得）
   stage: BuyStage
   staff: Staff
   startDate: string
@@ -52,6 +54,48 @@ export interface MonthlyStats {
   closedBuy: number
   newInquiries: number
   revenue: number
+  totalRevenue: number   // 全体売上（スプシ「全体売上」列）
+}
+
+// ── 案件管理シート対応インターフェース ────────────────────────────────
+// スプレッドシート列: 物件名, 進捗, 担当, 物件価格, 仲介手数料, 全体売上
+export interface Case {
+  id: string
+  propertyName: string     // 物件名
+  type: 'sell' | 'buy'    // 売却 or 購入
+  stage: string            // 進捗
+  staff: string            // 担当
+  propertyPrice: number    // 物件価格
+  brokerageFee: number     // 仲介手数料（スプシから直接取得）
+}
+
+// ── LINE問い合わせシート対応インターフェース ──────────────────────────
+// スプレッドシート列: 日付, 問い合わせ数
+export interface LineInquiry {
+  date: string   // YYYY-MM-DD
+  count: number  // 問い合わせ数（公式LINEからの問い合わせ）
+}
+
+// ── Chatwork メッセージ ───────────────────────────────────────────────
+export interface ChatworkMessage {
+  messageId: string
+  roomId: string
+  roomName: string
+  roomType: 'operations' | 'hp_line' | 'recruitment' | 'notification' | 'customer'
+  account: { name: string }
+  body: string
+  sendTime: number  // unix timestamp
+}
+
+// ── Chatwork ルームサマリー ───────────────────────────────────────────
+export interface ChatworkRoom {
+  roomId: string
+  name: string
+  type: 'operations' | 'hp_line' | 'recruitment' | 'notification' | 'customer'
+  description: string
+  unreadCount: number
+  latestMessage: string
+  latestTime: string
 }
 
 export const SELL_STAGES: SellStage[] = [
@@ -91,56 +135,64 @@ export const sellCases: SellCase[] = [
   {
     id: 'S001', clientName: '山本 太郎', propertyName: '太子堂マンション',
     propertyAddress: '東京都世田谷区太子堂3-1-5', propertyType: 'マンション',
-    askingPrice: 65000000, stage: '販売活動', staff: '鈴木',
+    askingPrice: 65000000, brokerageFee: calcBrokerageFee(65000000),
+    stage: '販売活動', staff: '鈴木',
     startDate: '2026-01-10', lastContactDate: '2026-03-25',
     notes: '3LDK、築15年。内覧希望者3組あり。', daysInStage: 32,
   },
   {
     id: 'S002', clientName: '田村 花子', propertyName: '綱島東戸建て',
     propertyAddress: '神奈川県横浜市港北区綱島東2-8-12', propertyType: '戸建て',
-    askingPrice: 48000000, stage: '媒介契約', staff: '田中',
+    askingPrice: 48000000, brokerageFee: calcBrokerageFee(48000000),
+    stage: '媒介契約', staff: '田中',
     startDate: '2026-02-15', lastContactDate: '2026-03-28',
     notes: '4LDK、築8年。専任媒介契約締結済み。', daysInStage: 18,
   },
   {
     id: 'S003', clientName: '佐々木 一郎', propertyName: '代々木レジデンス',
     propertyAddress: '東京都渋谷区代々木5-22-1', propertyType: 'マンション',
-    askingPrice: 92000000, stage: '売買契約', staff: '佐藤',
+    askingPrice: 92000000, brokerageFee: calcBrokerageFee(92000000),
+    stage: '売買契約', staff: '佐藤',
     startDate: '2025-11-20', lastContactDate: '2026-03-20',
     notes: '2LDK高層階。契約書確認中。', daysInStage: 7,
   },
   {
     id: 'S004', clientName: '中村 美咲', propertyName: '春日戸建て',
     propertyAddress: '千葉県千葉市中央区春日1-15-8', propertyType: '戸建て',
-    askingPrice: 32000000, stage: '査定', staff: '山田',
+    askingPrice: 32000000, brokerageFee: calcBrokerageFee(32000000),
+    stage: '査定', staff: '山田',
     startDate: '2026-03-18', lastContactDate: '2026-03-28',
     notes: '3LDK、築25年。リフォーム歴あり。', daysInStage: 13,
   },
   {
     id: 'S005', clientName: '渡辺 健二', propertyName: '自由が丘プレミアム',
     propertyAddress: '東京都目黒区自由が丘1-8-20', propertyType: 'マンション',
-    askingPrice: 78000000, stage: '決済', staff: '鈴木',
+    askingPrice: 78000000, brokerageFee: calcBrokerageFee(78000000),
+    stage: '決済', staff: '鈴木',
     startDate: '2025-10-05', lastContactDate: '2026-03-31',
     notes: '3LDK、来月決済予定。', daysInStage: 3,
   },
   {
     id: 'S006', clientName: '小林 直子', propertyName: '常盤土地',
     propertyAddress: '埼玉県さいたま市浦和区常盤6-4-9', propertyType: '土地',
-    askingPrice: 25000000, stage: '問い合わせ', staff: '伊藤',
+    askingPrice: 25000000, brokerageFee: calcBrokerageFee(25000000),
+    stage: '問い合わせ', staff: '伊藤',
     startDate: '2026-03-25', lastContactDate: '2026-03-27',
     notes: '60坪。用途地域確認中。', daysInStage: 6,
   },
   {
     id: 'S007', clientName: '加藤 正雄', propertyName: '荻窪ガーデン',
     propertyAddress: '東京都杉並区荻窪4-32-7', propertyType: 'マンション',
-    askingPrice: 55000000, stage: '販売活動', staff: '田中',
+    askingPrice: 55000000, brokerageFee: calcBrokerageFee(55000000),
+    stage: '販売活動', staff: '田中',
     startDate: '2026-01-28', lastContactDate: '2026-03-22',
     notes: '2LDK、内覧対応中。価格調整検討。', daysInStage: 45,
   },
   {
     id: 'S008', clientName: '松本 恵子', propertyName: '武蔵小杉タワー',
     propertyAddress: '神奈川県川崎市中原区武蔵小杉2-1-5', propertyType: 'マンション',
-    askingPrice: 71000000, stage: '媒介契約', staff: '佐藤',
+    askingPrice: 71000000, brokerageFee: calcBrokerageFee(71000000),
+    stage: '媒介契約', staff: '佐藤',
     startDate: '2026-02-20', lastContactDate: '2026-03-29',
     notes: '3LDK高層。専属専任媒介。', daysInStage: 12,
   },
@@ -150,61 +202,68 @@ export const buyCases: BuyCase[] = [
   {
     id: 'B001', clientName: '伊藤 誠', propertyName: '世田谷・目黒エリア',
     desiredArea: '東京都世田谷区・目黒区', propertyType: 'マンション',
-    budget: 70000000, stage: '内見', staff: '山田',
+    budget: 70000000, brokerageFee: calcBrokerageFee(70000000),
+    stage: '内見', staff: '山田',
     startDate: '2026-02-10', lastContactDate: '2026-03-30',
     notes: '3LDK希望。学区重視。週末内見3件予定。', daysInStage: 15,
   },
   {
     id: 'B002', clientName: '高橋 由美', propertyName: '横浜市戸建て',
     desiredArea: '神奈川県横浜市', propertyType: '戸建て',
-    budget: 55000000, stage: '購入申し込み', staff: '鈴木',
+    budget: 55000000, brokerageFee: calcBrokerageFee(55000000),
+    stage: '購入申し込み', staff: '鈴木',
     startDate: '2026-01-20', lastContactDate: '2026-03-28',
     notes: '4LDK希望。申込書提出済み。', daysInStage: 8,
   },
   {
     id: 'B003', clientName: '森 大輔', propertyName: '代々木パークビュー',
     desiredArea: '東京都渋谷区・新宿区', propertyType: 'マンション',
-    budget: 95000000, stage: '売買契約', staff: '佐藤',
+    budget: 95000000, brokerageFee: calcBrokerageFee(95000000),
+    stage: '売買契約', staff: '佐藤',
     startDate: '2025-12-01', lastContactDate: '2026-03-25',
     notes: '2LDK、代々木物件で契約締結。', daysInStage: 5,
   },
   {
     id: 'B004', clientName: '岡田 幸子', propertyName: '浦安シーサイド',
     desiredArea: '千葉県浦安市・市川市', propertyType: 'マンション',
-    budget: 42000000, stage: 'ローン審査', staff: '田中',
+    budget: 42000000, brokerageFee: calcBrokerageFee(42000000),
+    stage: 'ローン審査', staff: '田中',
     startDate: '2025-11-15', lastContactDate: '2026-03-20',
     notes: '2LDK、銀行審査中。結果待ち。', daysInStage: 21,
   },
   {
     id: 'B005', clientName: '木村 博', propertyName: '川口・戸田エリア',
     desiredArea: '埼玉県川口市・戸田市', propertyType: '戸建て',
-    budget: 38000000, stage: '問い合わせ', staff: '伊藤',
+    budget: 38000000, brokerageFee: calcBrokerageFee(38000000),
+    stage: '問い合わせ', staff: '伊藤',
     startDate: '2026-03-22', lastContactDate: '2026-03-28',
     notes: '3LDK希望。資金計画相談中。', daysInStage: 9,
   },
   {
     id: 'B006', clientName: '清水 雅代', propertyName: '江東リバーサイド',
     desiredArea: '東京都江東区・江戸川区', propertyType: 'マンション',
-    budget: 60000000, stage: '決済', staff: '山田',
+    budget: 60000000, brokerageFee: calcBrokerageFee(60000000),
+    stage: '決済', staff: '山田',
     startDate: '2025-10-20', lastContactDate: '2026-03-31',
     notes: '3LDK、今週決済完了予定。', daysInStage: 2,
   },
   {
     id: 'B007', clientName: '藤田 健太郎', propertyName: '中野・練馬エリア',
     desiredArea: '東京都中野区・練馬区', propertyType: 'マンション',
-    budget: 50000000, stage: '内見', staff: '鈴木',
+    budget: 50000000, brokerageFee: calcBrokerageFee(50000000),
+    stage: '内見', staff: '鈴木',
     startDate: '2026-03-01', lastContactDate: '2026-03-29',
     notes: '2LDK希望。内見5件実施済み。絞り込み段階。', daysInStage: 22,
   },
 ]
 
 export const monthlyStats: MonthlyStats[] = [
-  { month: '2025年10月', closedSell: 2, closedBuy: 3, newInquiries: 8,  revenue: 4200000 },
-  { month: '2025年11月', closedSell: 3, closedBuy: 2, newInquiries: 6,  revenue: 5800000 },
-  { month: '2025年12月', closedSell: 4, closedBuy: 4, newInquiries: 5,  revenue: 9200000 },
-  { month: '2026年1月',  closedSell: 2, closedBuy: 3, newInquiries: 9,  revenue: 4600000 },
-  { month: '2026年2月',  closedSell: 3, closedBuy: 2, newInquiries: 11, revenue: 6300000 },
-  { month: '2026年3月',  closedSell: 2, closedBuy: 2, newInquiries: 14, revenue: 7100000 },
+  { month: '2025年10月', closedSell: 2, closedBuy: 3, newInquiries: 8,  revenue: 4200000,  totalRevenue: 4200000  },
+  { month: '2025年11月', closedSell: 3, closedBuy: 2, newInquiries: 6,  revenue: 5800000,  totalRevenue: 5800000  },
+  { month: '2025年12月', closedSell: 4, closedBuy: 4, newInquiries: 5,  revenue: 9200000,  totalRevenue: 9200000  },
+  { month: '2026年1月',  closedSell: 2, closedBuy: 3, newInquiries: 9,  revenue: 4600000,  totalRevenue: 4600000  },
+  { month: '2026年2月',  closedSell: 3, closedBuy: 2, newInquiries: 11, revenue: 6300000,  totalRevenue: 6300000  },
+  { month: '2026年3月',  closedSell: 2, closedBuy: 2, newInquiries: 14, revenue: 7100000,  totalRevenue: 7100000  },
 ]
 
 export const recentActivities = [
@@ -231,4 +290,185 @@ export const conversionFunnel = [
   { stage: '販売活動/審査', count: 10, percentage: 29 },
   { stage: '売買契約',      count: 7,  percentage: 20 },
   { stage: '決済',          count: 5,  percentage: 14 },
+]
+
+// ── LINE問い合わせ（過去30日分モックデータ） ──────────────────────────
+// 実際のデータはスプレッドシート「LINE問い合わせ」シートから取得予定
+// 列構成: 日付, 問い合わせ数
+export const lineInquiries: LineInquiry[] = [
+  { date: '2026-03-01', count: 3 },
+  { date: '2026-03-02', count: 1 },
+  { date: '2026-03-03', count: 5 },
+  { date: '2026-03-04', count: 2 },
+  { date: '2026-03-05', count: 4 },
+  { date: '2026-03-06', count: 6 },
+  { date: '2026-03-07', count: 2 },
+  { date: '2026-03-08', count: 3 },
+  { date: '2026-03-09', count: 1 },
+  { date: '2026-03-10', count: 4 },
+  { date: '2026-03-11', count: 7 },
+  { date: '2026-03-12', count: 3 },
+  { date: '2026-03-13', count: 2 },
+  { date: '2026-03-14', count: 5 },
+  { date: '2026-03-15', count: 4 },
+  { date: '2026-03-16', count: 1 },
+  { date: '2026-03-17', count: 3 },
+  { date: '2026-03-18', count: 6 },
+  { date: '2026-03-19', count: 2 },
+  { date: '2026-03-20', count: 4 },
+  { date: '2026-03-21', count: 3 },
+  { date: '2026-03-22', count: 5 },
+  { date: '2026-03-23', count: 2 },
+  { date: '2026-03-24', count: 4 },
+  { date: '2026-03-25', count: 6 },
+  { date: '2026-03-26', count: 3 },
+  { date: '2026-03-27', count: 5 },
+  { date: '2026-03-28', count: 4 },
+  { date: '2026-03-29', count: 7 },
+  { date: '2026-03-30', count: 3 },
+]
+
+// ── Chatwork ルームモックデータ ───────────────────────────────────────
+// 実際のデータはChatwork APIから取得予定
+// ルームID は GitHub Secrets の CHATWORK_ROOM_* に設定
+export const chatworkRooms: ChatworkRoom[] = [
+  {
+    roomId: 'ROOM_OPERATIONS',
+    name: '運用チャット',
+    type: 'operations',
+    description: '事業進捗の報告・共有',
+    unreadCount: 2,
+    latestMessage: '3月の月次集計を共有します。売上目標達成率は98%でした。',
+    latestTime: '10:32',
+  },
+  {
+    roomId: 'ROOM_HP_LINE',
+    name: 'HP,LINEチャット',
+    type: 'hp_line',
+    description: 'HPやLINEの専門家とのやりとり',
+    unreadCount: 5,
+    latestMessage: 'LP改修の件、デザイン案を送りました。ご確認ください。',
+    latestTime: '09:15',
+  },
+  {
+    roomId: 'ROOM_RECRUITMENT',
+    name: '求人チャット',
+    type: 'recruitment',
+    description: '求人関連のやりとり',
+    unreadCount: 0,
+    latestMessage: '来週の面接日程を調整しました。3名の候補者です。',
+    latestTime: '昨日',
+  },
+  {
+    roomId: 'ROOM_NOTIFICATION',
+    name: '通知チャット',
+    type: 'notification',
+    description: '公式LINEからの問い合わせ通知（自動転送）',
+    unreadCount: 8,
+    latestMessage: '[LINE通知] 新規問い合わせ：「3LDKマンションを探しています」',
+    latestTime: '11:05',
+  },
+  {
+    roomId: 'ROOM_CUSTOMER',
+    name: 'メッセージチャット',
+    type: 'customer',
+    description: 'お客様からのメッセージ転送',
+    unreadCount: 3,
+    latestMessage: '[転送] 山本様より「内覧の希望日を変更したいのですが」',
+    latestTime: '10:58',
+  },
+]
+
+// ── Chatwork メッセージモックデータ（直近10件） ───────────────────────
+export const chatworkMessages: ChatworkMessage[] = [
+  {
+    messageId: 'msg001',
+    roomId: 'ROOM_NOTIFICATION',
+    roomName: '通知チャット',
+    roomType: 'notification',
+    account: { name: 'LINE公式アカウント' },
+    body: '[LINE通知] 新規問い合わせ：「3LDKマンションを探しています。予算は6000万円前後です。」',
+    sendTime: 1743382500,
+  },
+  {
+    messageId: 'msg002',
+    roomId: 'ROOM_CUSTOMER',
+    roomName: 'メッセージチャット',
+    roomType: 'customer',
+    account: { name: '転送Bot' },
+    body: '[転送] 山本様より「内覧の希望日を変更したいのですが、来週土曜日は可能ですか？」',
+    sendTime: 1743381800,
+  },
+  {
+    messageId: 'msg003',
+    roomId: 'ROOM_NOTIFICATION',
+    roomName: '通知チャット',
+    roomType: 'notification',
+    account: { name: 'LINE公式アカウント' },
+    body: '[LINE通知] 新規問い合わせ：「戸建ての売却を検討しています。査定をお願いしたいです。」',
+    sendTime: 1743380000,
+  },
+  {
+    messageId: 'msg004',
+    roomId: 'ROOM_OPERATIONS',
+    roomName: '運用チャット',
+    roomType: 'operations',
+    account: { name: '鈴木' },
+    body: '3月の月次集計を共有します。売上目標達成率は98%でした。来月は引き続き注力します。',
+    sendTime: 1743378000,
+  },
+  {
+    messageId: 'msg005',
+    roomId: 'ROOM_HP_LINE',
+    roomName: 'HP,LINEチャット',
+    roomType: 'hp_line',
+    account: { name: 'LP制作担当' },
+    body: 'LP改修の件、デザイン案を送りました。ご確認ください。修正点があればお知らせください。',
+    sendTime: 1743375000,
+  },
+  {
+    messageId: 'msg006',
+    roomId: 'ROOM_NOTIFICATION',
+    roomName: '通知チャット',
+    roomType: 'notification',
+    account: { name: 'LINE公式アカウント' },
+    body: '[LINE通知] 新規問い合わせ：「川崎市内でファミリー向けマンションを購入したいです。」',
+    sendTime: 1743372000,
+  },
+  {
+    messageId: 'msg007',
+    roomId: 'ROOM_CUSTOMER',
+    roomName: 'メッセージチャット',
+    roomType: 'customer',
+    account: { name: '転送Bot' },
+    body: '[転送] 高橋様より「申込書の記入方法について教えていただけますか？」',
+    sendTime: 1743369000,
+  },
+  {
+    messageId: 'msg008',
+    roomId: 'ROOM_OPERATIONS',
+    roomName: '運用チャット',
+    roomType: 'operations',
+    account: { name: '田中' },
+    body: '荻窪ガーデン（S007）の価格調整について、オーナーと協議しました。来週結論を出す予定です。',
+    sendTime: 1743366000,
+  },
+  {
+    messageId: 'msg009',
+    roomId: 'ROOM_RECRUITMENT',
+    roomName: '求人チャット',
+    roomType: 'recruitment',
+    account: { name: '採用担当' },
+    body: '来週の面接日程を調整しました。3名の候補者です。詳細はカレンダーをご確認ください。',
+    sendTime: 1743300000,
+  },
+  {
+    messageId: 'msg010',
+    roomId: 'ROOM_NOTIFICATION',
+    roomName: '通知チャット',
+    roomType: 'notification',
+    account: { name: 'LINE公式アカウント' },
+    body: '[LINE通知] 新規問い合わせ：「相続した土地の売却について相談したいです。」',
+    sendTime: 1743363000,
+  },
 ]

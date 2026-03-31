@@ -2,10 +2,11 @@ export const dynamic = 'force-static'
 
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
-  Clock, Users, ArrowRight, Banknote, Activity,
+  Banknote, Activity,
 } from 'lucide-react'
 import {
   sellCases, buyCases, monthlyStats, staffStats,
+  lineInquiries, chatworkRooms,
   calcBrokerageFee, formatPrice,
 } from '@/lib/mockData'
 import { calculateKPIs } from '@/lib/dataLoader'
@@ -364,6 +365,112 @@ export default function DashboardPage() {
             })}
           </div>
         </div>
+
+        {/* ━━━ Chatworkチャット状況 ━━━ */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-teal-500 inline-block"/>
+            Chatworkチャット状況
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {chatworkRooms.map(room => {
+              const isCustomerFacing = room.type === 'notification' || room.type === 'customer'
+              return (
+                <div
+                  key={room.roomId}
+                  className={`rounded-xl border p-4 flex flex-col gap-2 ${
+                    isCustomerFacing
+                      ? 'border-teal-200 bg-teal-50'
+                      : 'border-gray-100 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isCustomerFacing ? 'bg-teal-100' : 'bg-gray-200'
+                      }`}>
+                        <Activity size={14} className={isCustomerFacing ? 'text-teal-600' : 'text-gray-500'} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-bold truncate ${isCustomerFacing ? 'text-teal-800' : 'text-gray-700'}`}>
+                          {room.name}
+                        </p>
+                        <p className="text-gray-400 text-[10px] truncate">{room.description}</p>
+                      </div>
+                    </div>
+                    {room.unreadCount > 0 && (
+                      <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                        isCustomerFacing ? 'bg-teal-500' : 'bg-gray-400'
+                      }`}>
+                        {room.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed bg-white rounded-lg px-3 py-2 border border-gray-100">
+                    {room.latestMessage}
+                  </p>
+                  <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ━━━ LINE問い合わせ推移 ━━━ */}
+        {(() => {
+          const last7 = lineInquiries.slice(-7)
+          const thisMonth = lineInquiries.filter(d => d.date.startsWith('2026-03'))
+          const lastMonth = lineInquiries.filter(d => d.date.startsWith('2026-02'))
+          const thisMonthTotal = thisMonth.reduce((s, d) => s + d.count, 0)
+          const lastMonthTotal = lastMonth.reduce((s, d) => s + d.count, 0)
+          const maxCount = Math.max(...last7.map(d => d.count), 1)
+          const trend = lastMonthTotal > 0
+            ? Math.round(((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100)
+            : 0
+          const trendUp = trend >= 0
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <span className="w-1 h-4 rounded-full bg-green-500 inline-block"/>
+                LINE問い合わせ推移（直近7日）
+                <span className={`ml-auto flex items-center gap-1 text-xs font-semibold ${trendUp ? 'text-green-600' : 'text-red-500'}`}>
+                  {trendUp ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
+                  今月 {trendUp ? '+' : ''}{trend}%（先月比）
+                </span>
+              </h2>
+
+              {/* 今月 vs 先月サマリー */}
+              <div className="flex gap-3 mb-5">
+                <div className="flex-1 rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-center">
+                  <p className="text-[10px] text-green-600 font-semibold mb-0.5">今月合計</p>
+                  <p className="text-2xl font-black text-green-700">{thisMonthTotal}<span className="text-sm font-normal ml-0.5">件</span></p>
+                </div>
+                <div className="flex-1 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-center">
+                  <p className="text-[10px] text-gray-500 font-semibold mb-0.5">先月合計</p>
+                  <p className="text-2xl font-black text-gray-600">{lastMonthTotal}<span className="text-sm font-normal ml-0.5">件</span></p>
+                </div>
+              </div>
+
+              {/* 棒グラフ（純CSS） */}
+              <div className="flex items-end gap-2 h-24">
+                {last7.map((d) => {
+                  const heightPct = (d.count / maxCount) * 100
+                  const dayLabel = d.date.slice(5).replace('-', '/')
+                  return (
+                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-bold text-green-600">{d.count}</span>
+                      <div
+                        className="w-full rounded-t-md bg-green-400"
+                        style={{ height: `${heightPct}%`, minHeight: '4px' }}
+                      />
+                      <span className="text-gray-400 text-[9px]">{dayLabel}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
       </div>
     </div>
