@@ -5,21 +5,19 @@ import { usePathname } from 'next/navigation'
 
 import {
   LayoutDashboard,
-  TrendingDown,
-  ShoppingCart,
   BarChart3,
   Lightbulb,
   Building2,
   ClipboardList,
+  Settings,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/',             label: 'ダッシュボード', icon: LayoutDashboard },
-  { href: '/sell',         label: '売却仲介',       icon: TrendingDown },
-  { href: '/buy',          label: '購入仲介',       icon: ShoppingCart },
   { href: '/cases',        label: '案件一覧',       icon: ClipboardList },
   { href: '/analytics',   label: '分析',           icon: BarChart3 },
-  { href: '/suggestions',  label: 'AI改善提案',     icon: Lightbulb },
+  { href: '/suggestions',  label: 'AI改善',         icon: Lightbulb },
+  { href: '/settings',     label: '設定',           icon: Settings },
 ]
 
 export default function Sidebar() {
