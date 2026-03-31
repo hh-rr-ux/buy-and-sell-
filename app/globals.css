@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --sidebar-width: 240px;
+  --sidebar-width: 300px;
 }
 
 html {
