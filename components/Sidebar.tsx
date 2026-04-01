@@ -9,6 +9,7 @@ import {
   Lightbulb,
   Building2,
   ClipboardList,
+  MessageSquare,
 } from 'lucide-react'
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
   { href: '/cases',       label: '案件一覧',       icon: ClipboardList },
   { href: '/analytics',  label: '分析',           icon: BarChart3 },
   { href: '/suggestions', label: 'AI改善',         icon: Lightbulb },
+  { href: '/chat',        label: 'AI改善チャット',  icon: MessageSquare },
 ]
 
 export default function Sidebar() {
