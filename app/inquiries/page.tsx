@@ -1,8 +1,8 @@
 export const dynamic = 'force-static'
 
-import { TrendingUp, TrendingDown, Activity, MessageCircle, Bell } from 'lucide-react'
+import { TrendingUp, TrendingDown, MessageCircle, Bell } from 'lucide-react'
 import {
-  lineInquiries, chatworkRooms, chatworkMessages,
+  lineInquiries, chatworkRooms,
 } from '@/lib/mockData'
 
 // デモ用 問い合わせ一覧
@@ -224,32 +224,6 @@ export default function InquiriesPage() {
                   {room.latestMessage}
                 </p>
                 <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 最新の通知メッセージ */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-            <span className="w-1 h-4 rounded-full bg-orange-400 inline-block"/>
-            最新の通知・メッセージ
-          </h2>
-          <div className="space-y-2">
-            {chatworkMessages.filter(m => m.roomType === 'notification' || m.roomType === 'customer').map(m => (
-              <div key={m.messageId} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                  m.roomType === 'notification' ? 'bg-teal-100' : 'bg-blue-100'
-                }`}>
-                  <Activity size={12} className={m.roomType === 'notification' ? 'text-teal-600' : 'text-blue-600'}/>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10px] font-bold text-gray-500">{m.roomName}</span>
-                    <span className="text-[10px] text-gray-400">/ {m.account.name}</span>
-                  </div>
-                  <p className="text-xs text-gray-700 leading-relaxed">{m.body}</p>
-                </div>
               </div>
             ))}
           </div>
