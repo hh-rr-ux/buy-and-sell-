@@ -260,10 +260,6 @@ export default function SalesPage() {
                     <span className="text-gray-400">今月成約</span>
                     <span className="font-semibold text-green-600">{s.closedThisMonth}件</span>
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">平均日数</span>
-                    <span className="font-semibold text-gray-700">{s.avgDays}日</span>
-                  </div>
                 </div>
               </div>
             ))}
