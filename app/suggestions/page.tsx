@@ -13,6 +13,10 @@ import {
   AlertCircle,
   Scale,
   Code2,
+  Heart,
+  MessageCircle,
+  Eye,
+  Handshake,
 } from 'lucide-react'
 import { sellCases, buyCases, staffStats } from '@/lib/mockData'
 
@@ -113,6 +117,109 @@ function SuggestionCard({ s }: { s: Suggestion }) {
         <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
           <CheckCircle size={14} className="text-green-500" />
           <p className="text-xs text-green-700 font-medium">期待効果: {s.impact}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LibeCultureSection() {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+      {/* ヘッダー */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 border-b border-indigo-100">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center flex-shrink-0">
+            <Heart size={16} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-indigo-900">リベの流れ・温度感・文化</h2>
+            <p className="text-xs text-indigo-500 mt-0.5">AI改善提案の前提となるリベ大不動産の価値観と姿勢</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5 space-y-5">
+        {/* ミッション */}
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">ミッション</p>
+          <p className="text-sm font-bold text-gray-800 leading-relaxed">
+            「安心して相談できる住まい探しのパートナー」
+          </p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+            リベラルアーツ大学コミュニティを母体に、お金の知識を持つユーザー層を中心に支持される不動産会社。
+            「お金の教育」を受けた顧客が多く、論理的・透明な説明を好む温度感がある。
+          </p>
+        </div>
+
+        {/* 文化・価値観 */}
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">文化・価値観</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+              <Eye size={15} className="text-indigo-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-gray-700">透明性</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">費用の見える化・根拠ある査定額。「なぜその価格か」を必ず説明する</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+              <Handshake size={15} className="text-green-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-gray-700">無理な営業なし</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">プッシュ型営業をしない。顧客の意思決定を尊重し、三方良しの関係をつくる</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+              <MessageCircle size={15} className="text-green-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-gray-700">LINE・オンライン完結</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">相談〜やりとりはLINEで完結。内見・書類以外はフルリモート対応</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* サービスの流れ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* 買いたい */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">買いたい の流れ</p>
+            <ol className="space-y-1.5">
+              {['LINE無料相談', '資金計画サポート', '物件探し・条件整理', '内見同行', '売買契約サポート'].map((step, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-xs text-gray-700">{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          {/* 売りたい */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">売りたい の流れ</p>
+            <ol className="space-y-1.5">
+              {['LINE無料相談・無料査定', '根拠ある査定額の提示', '媒介契約・販売活動開始', '販売活動レポート共有', '売買契約・決済サポート'].map((step, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-xs text-gray-700">{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+
+        {/* 補足 */}
+        <div className="p-3 bg-indigo-50 rounded-lg">
+          <p className="text-xs text-indigo-700 leading-relaxed">
+            <span className="font-bold">改善提案を読む際の前提：</span>
+            リベ大不動産の顧客は「情報感度が高く、論理的な説明を好む」層が中心。
+            強引なクロージングよりも「納得感・安心感の提供」が成約率向上に直結する傾向がある。
+            対応はLINEが主軸のため、フォローアップもLINEベースで設計することが前提。
+          </p>
         </div>
       </div>
     </div>
@@ -268,6 +375,9 @@ export default function SuggestionsPage() {
           現在のデータを分析した、業務改善・収益向上のための提案
         </p>
       </div>
+
+      {/* Libe Culture */}
+      <LibeCultureSection />
 
       {/* Summary */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-5 mb-6 text-white">

@@ -54,7 +54,7 @@ const CustomTooltip = ({ active, payload, label }: {
           <div key={i} className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
             <span className="text-gray-500">{p.name}:</span>
-            <span className="font-medium text-gray-700">{p.value}</span>
+            <span className="font-medium text-gray-700">{p.value.toLocaleString()}</span>
           </div>
         ))}
       </div>
@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
           <p className="text-3xl font-bold text-orange-500">
-            {Math.round(totalRevenue / 10000 / 100) / 10}百万
+            {formatPrice(totalRevenue)}
           </p>
           <p className="text-xs text-gray-500 mt-1">6ヶ月合計売上</p>
         </div>
@@ -188,7 +188,7 @@ export default function AnalyticsPage() {
                 tick={{ fontSize: 11, fill: '#9ca3af' }}
                 tickFormatter={(v) => v.replace('年', '/').replace('月', '')}
               />
-              <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} tickFormatter={(v) => v.toLocaleString()} />
               <Tooltip
                 formatter={(value: number) => [`${value.toLocaleString()}万円`, '売上']}
                 labelFormatter={(label) => label}
@@ -373,7 +373,7 @@ function AreaAnalysisSection() {
           <BarChart data={areaChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="area" tick={{ fontSize: 13, fill: '#374151' }} />
-            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
+            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} tickFormatter={(v) => v.toLocaleString()} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
             <Bar dataKey="売却手数料" fill="#ef4444" radius={[4,4,0,0]} />

@@ -27,6 +27,9 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname()
 
+  const now = new Date()
+  const currentDate = `${String(now.getFullYear()).slice(-2)}/${now.getMonth() + 1}`
+
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
@@ -93,7 +96,7 @@ export default function Sidebar() {
           </div>
           <div>
             <p className="text-white/80 text-xs font-medium">管理者</p>
-            <p className="text-white/40 text-[10px]">2026年3月</p>
+            <p className="text-white/40 text-[10px]">{currentDate}</p>
           </div>
         </div>
       </div>
