@@ -14,9 +14,6 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
-  FunnelChart,
-  Funnel,
-  LabelList,
   LineChart,
   Line,
 } from 'recharts'
@@ -24,7 +21,6 @@ import { BarChart3, TrendingUp, Target, MessageCircle, MapPin } from 'lucide-rea
 import { monthlyStats, staffStats, conversionFunnel, sellCases, buyCases, lineInquiries, SELL_AREAS, BUY_AREAS, formatPrice } from '@/lib/mockData'
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f97316', '#eab308', '#22c55e']
-const STAFF_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f97316', '#ec4899']
 
 const stageDistribution = [
   { name: '問い合わせ', value: sellCases.filter(c => c.stage === '問い合わせ').length + buyCases.filter(c => c.stage === '問い合わせ').length },

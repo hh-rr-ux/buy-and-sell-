@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -27,8 +28,10 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname()
 
-  const now = new Date()
-  const currentDate = `${String(now.getFullYear()).slice(-2)}/${now.getMonth() + 1}`
+  const currentDate = useMemo(() => {
+    const now = new Date()
+    return `${String(now.getFullYear()).slice(-2)}/${now.getMonth() + 1}`
+  }, [])
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
