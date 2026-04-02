@@ -38,3 +38,6 @@ next-env.d.ts
 chatwork_messages.json
 sell_cases.json
 buy_cases.json
+
+# Fetched API data (generated at build time, never committed)
+/data/

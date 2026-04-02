@@ -1,26 +1,17 @@
-name: Fetch Data from Chatwork & Google Sheets
+name: Fetch Data (Manual Test)
 
-# このワークフローは Chatwork と Google Sheets からデータを取得し、
-# data/ ディレクトリに JSON ファイルとして保存します。
-# データ更新後に自動的に deploy.yml をトリガーしてサイトを再ビルドします。
+# このワークフローは API からのデータ取得を手動でテストするためのものです。
+# 実際のデータ取得・ビルド・デプロイは deploy.yml が担います。
+# データは取得後に破棄され、リポジトリにはコミットされません。
 
 on:
-  # 30分ごとに自動実行
-  schedule:
-    - cron: '*/30 * * * *'
-  # deploy.yml 完了後にも実行（初回デプロイ後にデータを取得）
-  workflow_run:
-    workflows: ["Deploy to GitHub Pages"]
-    types: [completed]
-  # 手動実行も可能
   workflow_dispatch:
 
 jobs:
-  fetch-and-update:
+  fetch-test:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      actions: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -35,9 +26,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── データ取得スクリプトを実行 ───────────────────────────────────
-      # scripts/fetch-data.js が Chatwork と Google Sheets からデータを取得し
-      # data/cases.json, data/line-inquiries.json, data/chatwork.json に書き込む
       - name: Fetch from Chatwork & Google Sheets
         run: node scripts/fetch-data.js
         env:
@@ -52,24 +40,5 @@ jobs:
           GOOGLE_SHEETS_CASES_RANGE:  ${{ secrets.GOOGLE_SHEETS_CASES_RANGE }}
           GOOGLE_SHEETS_LINE_RANGE:   ${{ secrets.GOOGLE_SHEETS_LINE_RANGE }}
 
-      # ── データが変更された場合のみコミット・プッシュ ─────────────────
-      - name: Commit and push if data changed
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/ || true
-          git diff --staged --quiet || git commit -m "chore: update data from API [$(date '+%Y-%m-%d %H:%M UTC')]"
-          git push || true
-
-      # ── データ更新後に再デプロイをトリガー ──────────────────────────
-      - name: Trigger deploy
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'deploy.yml',
-              ref: 'main'
-            })
+      - name: Show generated files
+        run: ls -lh data/ && echo "--- cases.json ---" && cat data/cases.json || true

@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # 30分ごとにデータを最新化して再デプロイ
+  schedule:
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -30,6 +33,23 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # ── Chatwork & Google Sheets からデータを取得 ────────────────────
+      # data/ ディレクトリに JSON を生成するが、リポジトリにはコミットしない。
+      # ビルド時のみ使用し、そのまま破棄される。
+      - name: Fetch data from APIs
+        run: node scripts/fetch-data.js
+        env:
+          CHATWORK_API_TOKEN:         ${{ secrets.CHATWORK_API_TOKEN }}
+          CHATWORK_ROOM_OPERATIONS:   ${{ secrets.CHATWORK_ROOM_OPERATIONS }}
+          CHATWORK_ROOM_HP_LINE:      ${{ secrets.CHATWORK_ROOM_HP_LINE }}
+          CHATWORK_ROOM_RECRUITMENT:  ${{ secrets.CHATWORK_ROOM_RECRUITMENT }}
+          CHATWORK_ROOM_NOTIFICATION: ${{ secrets.CHATWORK_ROOM_NOTIFICATION }}
+          CHATWORK_ROOM_CUSTOMER:     ${{ secrets.CHATWORK_ROOM_CUSTOMER }}
+          GOOGLE_SHEETS_API_KEY:      ${{ secrets.GOOGLE_SHEETS_API_KEY }}
+          GOOGLE_SHEETS_ID:           ${{ secrets.GOOGLE_SHEETS_ID }}
+          GOOGLE_SHEETS_CASES_RANGE:  ${{ secrets.GOOGLE_SHEETS_CASES_RANGE }}
+          GOOGLE_SHEETS_LINE_RANGE:   ${{ secrets.GOOGLE_SHEETS_LINE_RANGE }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
