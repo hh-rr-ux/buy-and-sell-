@@ -13,10 +13,6 @@ import {
   AlertCircle,
   Scale,
   Code2,
-  Heart,
-  MessageCircle,
-  Eye,
-  Handshake,
 } from 'lucide-react'
 import { sellCases, buyCases, staffStats } from '@/lib/mockData'
 
@@ -123,109 +119,6 @@ function SuggestionCard({ s }: { s: Suggestion }) {
   )
 }
 
-function LibeCultureSection() {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-      {/* ヘッダー */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 border-b border-indigo-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center flex-shrink-0">
-            <Heart size={16} className="text-white" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-indigo-900">リベの流れ・温度感・文化</h2>
-            <p className="text-xs text-indigo-500 mt-0.5">AI改善提案の前提となるリベ大不動産の価値観と姿勢</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-5 space-y-5">
-        {/* ミッション */}
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">ミッション</p>
-          <p className="text-sm font-bold text-gray-800 leading-relaxed">
-            「安心して相談できる住まい探しのパートナー」
-          </p>
-          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-            リベラルアーツ大学コミュニティを母体に、お金の知識を持つユーザー層を中心に支持される不動産会社。
-            「お金の教育」を受けた顧客が多く、論理的・透明な説明を好む温度感がある。
-          </p>
-        </div>
-
-        {/* 文化・価値観 */}
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">文化・価値観</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-              <Eye size={15} className="text-indigo-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-gray-700">透明性</p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">費用の見える化・根拠ある査定額。「なぜその価格か」を必ず説明する</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-              <Handshake size={15} className="text-green-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-gray-700">無理な営業なし</p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">プッシュ型営業をしない。顧客の意思決定を尊重し、三方良しの関係をつくる</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-              <MessageCircle size={15} className="text-green-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-gray-700">LINE・オンライン完結</p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">相談〜やりとりはLINEで完結。内見・書類以外はフルリモート対応</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* サービスの流れ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* 買いたい */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">買いたい の流れ</p>
-            <ol className="space-y-1.5">
-              {['LINE無料相談', '資金計画サポート', '物件探し・条件整理', '内見同行', '売買契約サポート'].map((step, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                    {i + 1}
-                  </span>
-                  <span className="text-xs text-gray-700">{step}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-          {/* 売りたい */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">売りたい の流れ</p>
-            <ol className="space-y-1.5">
-              {['LINE無料相談・無料査定', '根拠ある査定額の提示', '媒介契約・販売活動開始', '販売活動レポート共有', '売買契約・決済サポート'].map((step, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                    {i + 1}
-                  </span>
-                  <span className="text-xs text-gray-700">{step}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-
-        {/* 補足 */}
-        <div className="p-3 bg-indigo-50 rounded-lg">
-          <p className="text-xs text-indigo-700 leading-relaxed">
-            <span className="font-bold">改善提案を読む際の前提：</span>
-            リベ大不動産の顧客は「情報感度が高く、論理的な説明を好む」層が中心。
-            強引なクロージングよりも「納得感・安心感の提供」が成約率向上に直結する傾向がある。
-            対応はLINEが主軸のため、フォローアップもLINEベースで設計することが前提。
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function SuggestionsPage() {
   // Rule-based analysis
   const stalledSellCount = sellCases.filter(c => c.stage === '販売活動' && c.daysInStage > 30).length
@@ -241,11 +134,11 @@ export default function SuggestionsPage() {
       priority: 'high',
       category: 'bottleneck',
       title: '販売活動ステージでの滞留が深刻',
-      finding: `現在、売却仲介の「販売活動」ステージに${stalledSellCount}件が30日以上滞留しています（S001: 山本様32日、S007: 加藤様45日）。特にS007は45日を超えており、価格設定の見直しが急務です。販売活動→売買契約の変換に平均37日かかっており、業界標準（21日）を大幅に上回っています。`,
+      finding: `現在、売却仲介の「販売活動」ステージに${stalledSellCount}件が30日以上滞留しています（S001: 山本様32日、S007: 加藤様45日）。特にS007は45日を超えており、価格設定の見直しが急務です。販売活動→売買契約の変換に平均37日かかっており、業界標準（21日）を大幅に上回っています。リベ大不動産の顧客はお金の知識を持つ情報感度の高い層が多く、「なぜ売れていないか」の根拠ある説明を求めている傾向があります。`,
       actions: [
-        '加藤様（S007）の物件について、近隣の最新成約事例を再調査し、価格を5〜8%調整することを顧客に提案する',
-        '山本様（S001）の内覧希望者3組に対して、今週中に日程調整のフォローアップ連絡を行う',
-        '毎週月曜日に「30日超滞留案件」のレビュー会議を設定し、担当者が具体的なアクションプランを共有する',
+        '加藤様（S007）の物件について、近隣の最新成約事例データを揃えた上で「なぜ価格調整が必要か」を根拠とともにLINEで共有し、顧客が納得した上で5〜8%の調整を進める',
+        '山本様（S001）の内覧希望者3組に対して、今週中にLINEで日程調整のフォローを行う（プッシュではなく「ご都合はいかがでしょうか」のスタンスで）',
+        '毎週月曜日に「30日超滞留案件」のレビュー会議を設定し、担当者が具体的なアクションプランと販売活動レポートを共有する',
         'ポータルサイトの写真・説明文を更新し、新鮮さを演出してPV数の回復を図る',
       ],
       impact: '販売活動期間を平均37日→25日に短縮、月次成約数+1件増加（年間+120万円程度の売上増）',
@@ -254,11 +147,11 @@ export default function SuggestionsPage() {
       priority: 'high',
       category: 'bottleneck',
       title: 'ローン審査ステージの長期化リスク',
-      finding: `購入仲介のローン審査中案件（B004: 岡田様）が21日経過しており、銀行の審査結果待ちが続いています。ローン審査は平均14〜21日が標準ですが、顧客への状況報告が不足すると不安から他社に流れるリスクがあります。`,
+      finding: `購入仲介のローン審査中案件（B004: 岡田様）が21日経過しており、銀行の審査結果待ちが続いています。ローン審査は平均14〜21日が標準ですが、リベ大不動産の顧客はお金の知識があるからこそ「今どういう状況か」「次に何が起きるか」を把握したいニーズが強く、情報が来ない状態が一番不安を生みます。`,
       actions: [
-        '岡田様に今週中に進捗報告の電話をし、審査状況と想定スケジュールを丁寧に説明する',
-        'メインバンクの審査が長引く場合に備え、別の金融機関（フラット35等）への並行申請を提案する',
-        'ローン審査中の顧客には週1回の定期報告メールを送る運用ルールを策定する',
+        '岡田様に今週中にLINEで進捗報告を送り、審査状況・想定スケジュール・次のステップを図解入りで丁寧に共有する',
+        'メインバンクの審査が長引く場合に備え、フラット35等の選択肢を「押し付けではなく情報提供」として提案する',
+        'ローン審査中の顧客には週1回の定期報告をLINEで送る運用ルールを策定する（「何もなくても連絡する」文化の醸成）',
       ],
       impact: 'ローン審査中の案件離脱率を30%削減、顧客満足度向上',
     },
@@ -279,12 +172,12 @@ export default function SuggestionsPage() {
       priority: 'medium',
       category: 'response',
       title: '初回問い合わせへの返答速度を改善する',
-      finding: `不動産業界の調査によると、初回問い合わせから1時間以内に返答した場合の成約率は、24時間後の返答と比較して7倍高くなるとされています。現在、問い合わせ受付からの対応状況が可視化されておらず、特に夜間・週末の問い合わせへの初動対応が遅れている可能性があります。`,
+      finding: `不動産業界の調査によると、初回問い合わせから1時間以内に返答した場合の成約率は、24時間後の返答と比較して7倍高くなるとされています。リベ大不動産の問い合わせ窓口はLINEが主軸のため、特に夜間・週末のLINE問い合わせへの初動対応が遅れると、情報感度の高い顧客は即座に他社比較に動くリスクがあります。`,
       actions: [
-        'Chatworkへの問い合わせ通知受信後、30分以内に「受付確認メッセージ」を送る自動返信テンプレートを用意する',
-        '平日17時以降・土日の問い合わせ担当者のローテーションシフトを作成する',
+        'LINE公式アカウントに自動返信を設定し、問い合わせ受信後すぐに「受け付けました・翌営業日○時までにご連絡します」と送る',
+        '平日17時以降・土日のLINE対応担当者のローテーションシフトを作成する',
         '問い合わせ受付から初回接触までの時間をKPI（目標：2時間以内）として管理する',
-        'よくある質問（物件概要・査定方法・手順）のFAQページを作成し、初回接触前の情報提供を充実させる',
+        '「買いたい/売りたいでよくある質問」をLINEのリッチメニューに整備し、初回接触前に顧客が自己解決できる導線をつくる',
       ],
       impact: '初回接触率向上により、問い合わせ→査定への転換率を現状の63%から70%以上に改善',
     },
@@ -292,10 +185,10 @@ export default function SuggestionsPage() {
       priority: 'medium',
       category: 'seasonal',
       title: '春の引越しシーズン（3〜4月）を最大活用する',
-      finding: `不動産取引は3月・4月に年間最大のピークを迎えます。データを見ると、2026年3月の問い合わせ数は14件（2月比27%増）と急増しており、このシーズナリティを最大活用できるかが年間業績を大きく左右します。一方、12月の成約件数は8件（売却4・購入4）と最多で、年末需要も重要です。`,
+      finding: `不動産取引は3月・4月に年間最大のピークを迎えます。データを見ると、2026年3月の問い合わせ数は14件（2月比27%増）と急増しており、このシーズナリティを最大活用できるかが年間業績を大きく左右します。リベ大コミュニティのユーザーは「計画的に動く」傾向があるため、シーズン前に「今動くとどんなメリットがあるか」を具体的な数字で発信することが有効です。`,
       actions: [
         '4月末までに現在の問い合わせ14件のうち最低8件を次のステージ（査定・内見）に進める目標を設定する',
-        '春の転勤需要（4月・10月）に合わせた法人顧客向けの売却・購入相談会を企画する',
+        'リベ大コミュニティ向けに「春の不動産売買、タイミングと損しない動き方」を資料化してLINEで配布する（情報提供型アプローチ）',
         '年末（12月）に向けた9月頃からの早期アプローチ（買替え検討客のリストアップ）を今から計画する',
         'シーズン別の広告予算配分を見直し、3〜4月・9〜10月に集中投資する計画を立てる',
       ],
@@ -305,12 +198,12 @@ export default function SuggestionsPage() {
       priority: 'low',
       category: 'automation',
       title: 'Claude Codeによる業務自動化で週10時間を削減する',
-      finding: `現在、案件管理・進捗報告・顧客へのフォローアップメールなど、定型的な業務に多くの時間が費やされていると推定されます。Claude Code等のAIを活用することで、これらの業務を自動化・半自動化し、担当者が顧客対応と提案活動に集中できる環境を作ることが可能です。`,
+      finding: `現在、案件管理・進捗報告・顧客へのLINEフォローアップなど、定型的な業務に多くの時間が費やされていると推定されます。リベ大不動産はLINE主軸・オンライン完結を強みとしており、このデジタル文化とClaude Code等のAI自動化は相性が非常に良い。担当者が「納得感のある対話」に集中できる環境をつくることが、リベらしい顧客体験の向上にも直結します。`,
       actions: [
-        '【即実行可能】Chatwork新着メッセージを定期取得→Google Sheetsの案件データを自動更新するスクリプトをClaude Codeで作成する',
-        '【1ヶ月以内】「ステージが30日以上変化なし」の案件を自動検知し、担当者にChatworkで通知するアラートボットを構築する',
-        '【1ヶ月以内】顧客の属性（予算・エリア・種別）に応じた「おすすめ物件リスト」を自動生成するメール配信を実装する',
-        '【3ヶ月以内】売買契約締結後の必要書類チェックリストを自動生成し、顧客・担当者双方に送付する仕組みを作る',
+        '【即実行可能】LINE公式アカウントの新着メッセージを定期取得→Google Sheetsの案件データを自動更新するスクリプトをClaude Codeで作成する',
+        '【1ヶ月以内】「ステージが30日以上変化なし」の案件を自動検知し、担当者のLINEに通知するアラートボットを構築する',
+        '【1ヶ月以内】顧客の属性（予算・エリア・種別）に応じた「おすすめ物件リスト」をLINEで自動送付する仕組みを実装する',
+        '【3ヶ月以内】売買契約締結後の必要書類チェックリストを自動生成し、顧客・担当者双方にLINEで送付する仕組みを作る',
         '【3ヶ月以内】月次レポート（KPI・案件状況・担当者実績）を自動生成してPDF出力する機能をこのダッシュボードに追加する',
       ],
       impact: '担当者1名あたり週5〜10時間の削減、年間200〜400時間の業務効率化。担当者が顧客対応に集中できるようになり成約率5〜10%向上が見込める',
@@ -319,13 +212,12 @@ export default function SuggestionsPage() {
       priority: 'low',
       category: 'revenue',
       title: '収益構造の多様化と客単価向上戦略',
-      finding: `現在の収益は仲介手数料（成約時）に集中しており、成約しなければ収益がゼロになるリスクがあります。また、高額物件（9,200万円の佐々木様等）は1件で大きな収益をもたらすため、高額物件の比率を高めることが収益向上に直結します。`,
+      finding: `現在の収益は仲介手数料（成約時）に集中しており、成約しなければ収益がゼロになるリスクがあります。リベ大不動産の強みは「リベ大コミュニティ」という信頼基盤であり、ここからの紹介・口コミ流入が最も成約率が高いチャネルになりえます。高額物件（9,200万円の佐々木様等）は1件で大きな収益をもたらすため、コミュニティ内の信頼を起点にした高額帯への展開が有効です。`,
       actions: [
-        '既存顧客（過去の取引客）に対して1〜2年後の買替え・相続対策相談の案内を送り、リピート率を高める',
-        '売買仲介に加え、賃貸管理・任意売却・相続コンサルティングなどの周辺サービスへの拡張を検討する',
-        '7,000万円以上の高額物件を重点開拓するため、富裕層向けSNS（LinkedInなど）の活用や相続・税理士との連携を強化する',
-        '成約顧客に紹介報酬制度（クーポン等）を設け、口コミ・紹介による新規顧客獲得コストを下げる',
-        'ポータルサイト依存から脱却するため、SEO対応のオウンドメディア（地域情報ブログ等）を構築して自然流入を増やす',
+        '成約顧客に「リベ大コミュニティの知人・家族への紹介」を自然な形でお願いする仕組みをつくる（紹介料ではなく感謝の表現として）',
+        '既存顧客（過去の取引客）に対して1〜2年後の買替え・相続対策相談の案内をLINEで送り、リピート率を高める',
+        '7,000万円以上の高額物件を重点開拓するため、相続・税理士との連携を強化し「お金の専門家ネットワーク」として存在感を高める',
+        'ポータルサイト依存から脱却するため、リベ大コミュニティ内での情報発信（YouTube・ブログ等）を活用した自然流入を増やす',
       ],
       impact: '2年後の目標として月間売上20%増、高額物件比率30%→45%への引き上げ',
     },
@@ -347,13 +239,13 @@ export default function SuggestionsPage() {
       priority: 'low',
       category: 'developer',
       title: 'Claude Codeでこのダッシュボード自体を自動進化させる',
-      finding: `このシステムはClaude Codeによって構築・運用されています。Claude Code の Hooks・MCP・Agent SDK を活用することで、「データ取得→分析→ダッシュボード更新→改善提案」のサイクルを自律的に回せるようになります。つまり、このAI改善提案ページ自体がリアルタイムデータを元に自動更新される仕組みを作ることが技術的に可能です。`,
+      finding: `このシステムはClaude Codeによって構築・運用されています。Claude Code の Hooks・MCP・Agent SDK を活用することで、「データ取得→分析→ダッシュボード更新→改善提案」のサイクルを自律的に回せるようになります。リベ大不動産はLINE・オンライン完結・透明な情報提供を軸にしており、AIによる業務自動化と価値観の親和性が高く、技術投資がブランド体験の向上にも直結します。`,
       actions: [
-        '【即実装可能】Claude Code の PostToolUse Hook を使い、スプシ・Chatwork のデータ取得後に自動でダッシュボードのJSONを更新するスクリプトを作成する',
+        '【即実装可能】Claude Code の PostToolUse Hook を使い、スプシ・LINE のデータ取得後に自動でダッシュボードのJSONを更新するスクリプトを作成する',
         '【即実装可能】GitHub Actions の Scheduled Trigger でClaude Codeを定期実行し、毎朝データを自動フェッチ→静的ファイルを再ビルド→GitHub Pagesに自動デプロイする',
-        '【1ヶ月以内】MCP（Model Context Protocol）サーバーを導入し、Google Sheets・Chatwork APIをClaude Codeから直接操作できる環境を整備する',
+        '【1ヶ月以内】MCP（Model Context Protocol）サーバーを導入し、Google Sheets・LINE Messaging APIをClaude Codeから直接操作できる環境を整備する',
         '【1ヶ月以内】Claude Agent SDK を使い、「案件データを読んで改善提案を自動生成→このページのJSONを更新→PRを作成する」エージェントを構築する',
-        '【3ヶ月以内】Anthropic API（claude-opus-4-6）を活用した「不動産業務特化AIアシスタント」をチャットUIとして実装し、担当者が自然言語で案件照会・進捗確認・次アクション提案を受けられるようにする',
+        '【3ヶ月以内】Anthropic API（claude-opus-4-6）を活用した「リベ大不動産特化AIアシスタント」をチャットUIとして実装し、担当者が自然言語で案件照会・進捗確認・次アクション提案を受けられるようにする',
       ],
       impact: 'ダッシュボードの自律的な進化・保守コスト削減、AIによる業務改善サイクルの加速、競合他社との技術的差別化',
     },
@@ -375,9 +267,6 @@ export default function SuggestionsPage() {
           現在のデータを分析した、業務改善・収益向上のための提案
         </p>
       </div>
-
-      {/* Libe Culture */}
-      <LibeCultureSection />
 
       {/* Summary */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-5 mb-6 text-white">
