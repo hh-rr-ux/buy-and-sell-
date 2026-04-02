@@ -10,11 +10,15 @@ import {
   Building2,
   ClipboardList,
   MessageSquare,
+  TrendingUp,
+  MessageCircle,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/',            label: 'ダッシュボード', icon: LayoutDashboard },
   { href: '/cases',       label: '案件一覧',       icon: ClipboardList },
+  { href: '/sales',       label: '売上',           icon: TrendingUp },
+  { href: '/inquiries',   label: 'お問合せ',       icon: MessageCircle },
   { href: '/analytics',  label: '分析',           icon: BarChart3 },
   { href: '/suggestions', label: 'AI改善',         icon: Lightbulb },
   { href: '/chat',        label: 'AI改善チャット',  icon: MessageSquare },
