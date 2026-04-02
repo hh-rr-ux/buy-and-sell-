@@ -11,6 +11,8 @@ import {
   CheckCircle,
   ArrowRight,
   AlertCircle,
+  Scale,
+  Code2,
 } from 'lucide-react'
 import { sellCases, buyCases, staffStats } from '@/lib/mockData'
 
@@ -45,6 +47,8 @@ function CategoryIcon({ category }: { category: string }) {
     seasonal: <Calendar size={18} className="text-green-500" />,
     automation: <Zap size={18} className="text-yellow-500" />,
     revenue: <TrendingUp size={18} className="text-pink-500" />,
+    legal: <Scale size={18} className="text-slate-500" />,
+    developer: <Code2 size={18} className="text-cyan-500" />,
   }
   return <>{map[category] || <Lightbulb size={18} className="text-gray-400" />}</>
 }
@@ -57,6 +61,8 @@ function CategoryBg({ category }: { category: string }): string {
     seasonal: 'bg-green-50',
     automation: 'bg-yellow-50',
     revenue: 'bg-pink-50',
+    legal: 'bg-slate-50',
+    developer: 'bg-cyan-50',
   }
   return map[category] || 'bg-gray-50'
 }
@@ -77,6 +83,8 @@ function SuggestionCard({ s }: { s: Suggestion }) {
                s.category === 'response' ? 'レスポンス改善' :
                s.category === 'seasonal' ? '季節トレンド分析' :
                s.category === 'automation' ? 'AI・自動化提案' :
+               s.category === 'legal' ? '法務リスク管理' :
+               s.category === 'developer' ? 'Claude Code 開発' :
                '収益向上戦略'}
             </span>
             <PriorityBadge priority={s.priority} />
@@ -213,6 +221,34 @@ export default function SuggestionsPage() {
         'ポータルサイト依存から脱却するため、SEO対応のオウンドメディア（地域情報ブログ等）を構築して自然流入を増やす',
       ],
       impact: '2年後の目標として月間売上20%増、高額物件比率30%→45%への引き上げ',
+    },
+    {
+      priority: 'medium',
+      category: 'legal',
+      title: '重要事項説明・契約書のリスクを組織で管理する',
+      finding: `不動産取引における重要事項説明（重説）・売買契約書は、記載漏れや説明不足が後のトラブル・損害賠償リスクに直結します。担当者個人のスキルに依存した現状では、属人化によるミス発生リスクを排除できません。また、近年の法改正（IT重説の普及・電子契約の解禁）への対応が遅れると、競合他社に対する差別化機会を失います。`,
+      actions: [
+        '重要事項説明書・売買契約書のチェックリストを項目別に整備し、担当者が自己確認できる仕組みを作る',
+        '物件種別（マンション・戸建て・土地）ごとに確認すべき法令・規制（用途地域・建ぺい率・接道義務等）をまとめたナレッジベースを整備する',
+        'IT重説・電子契約（GMOサイン等）の導入を検討し、顧客の利便性向上とペーパーレス化を推進する',
+        '年1回以上、宅建業法・消費者保護法の改正情報を全スタッフで共有する勉強会を実施する',
+        '契約書テンプレートの管理ルールを策定し、常に最新の法令対応版を使用できる体制を整える',
+      ],
+      impact: '契約トラブル・クレームの発生リスクを低減、顧客信頼度の向上、IT重説導入による商圏拡大',
+    },
+    {
+      priority: 'low',
+      category: 'developer',
+      title: 'Claude Codeでこのダッシュボード自体を自動進化させる',
+      finding: `このシステムはClaude Codeによって構築・運用されています。Claude Code の Hooks・MCP・Agent SDK を活用することで、「データ取得→分析→ダッシュボード更新→改善提案」のサイクルを自律的に回せるようになります。つまり、このAI改善提案ページ自体がリアルタイムデータを元に自動更新される仕組みを作ることが技術的に可能です。`,
+      actions: [
+        '【即実装可能】Claude Code の PostToolUse Hook を使い、スプシ・Chatwork のデータ取得後に自動でダッシュボードのJSONを更新するスクリプトを作成する',
+        '【即実装可能】GitHub Actions の Scheduled Trigger でClaude Codeを定期実行し、毎朝データを自動フェッチ→静的ファイルを再ビルド→GitHub Pagesに自動デプロイする',
+        '【1ヶ月以内】MCP（Model Context Protocol）サーバーを導入し、Google Sheets・Chatwork APIをClaude Codeから直接操作できる環境を整備する',
+        '【1ヶ月以内】Claude Agent SDK を使い、「案件データを読んで改善提案を自動生成→このページのJSONを更新→PRを作成する」エージェントを構築する',
+        '【3ヶ月以内】Anthropic API（claude-opus-4-6）を活用した「不動産業務特化AIアシスタント」をチャットUIとして実装し、担当者が自然言語で案件照会・進捗確認・次アクション提案を受けられるようにする',
+      ],
+      impact: 'ダッシュボードの自律的な進化・保守コスト削減、AIによる業務改善サイクルの加速、競合他社との技術的差別化',
     },
   ]
 
