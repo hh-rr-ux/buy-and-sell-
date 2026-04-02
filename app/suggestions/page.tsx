@@ -122,7 +122,6 @@ function SuggestionCard({ s }: { s: Suggestion }) {
 export default function SuggestionsPage() {
   // Rule-based analysis
   const stalledSellCount = sellCases.filter(c => c.stage === '販売活動' && c.daysInStage > 30).length
-  const stalledBuyCount = buyCases.filter(c => c.stage === '内見' && c.daysInStage > 20).length
   const maxStaffCases = Math.max(...staffStats.map(s => s.activeCases))
   const minStaffCases = Math.min(...staffStats.map(s => s.activeCases))
   const overloadedStaff = staffStats.filter(s => s.activeCases >= maxStaffCases).map(s => s.name)
@@ -147,7 +146,7 @@ export default function SuggestionsPage() {
       priority: 'high',
       category: 'bottleneck',
       title: 'ローン審査ステージの長期化リスク',
-      finding: `購入仲介のローン審査中案件（B004: 岡田様）が21日経過しており、銀行の審査結果待ちが続いています。ローン審査は平均14〜21日が標準ですが、リベ大不動産の顧客はお金の知識があるからこそ「今どういう状況か」「次に何が起きるか」を把握したいニーズが強く、情報が来ない状態が一番不安を生みます。`,
+      finding: `購入仲介でローン審査が14日超の案件が現在${loanStalled.length}件あります（${loanStalled.map(c => c.clientName).join('・')}）。ローン審査は平均14〜21日が標準ですが、リベ大不動産の顧客はお金の知識があるからこそ「今どういう状況か」「次に何が起きるか」を把握したいニーズが強く、情報が来ない状態が一番不安を生みます。`,
       actions: [
         '岡田様に今週中にLINEで進捗報告を送り、審査状況・想定スケジュール・次のステップを図解入りで丁寧に共有する',
         'メインバンクの審査が長引く場合に備え、フラット35等の選択肢を「押し付けではなく情報提供」として提案する',
