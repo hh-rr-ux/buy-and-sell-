@@ -33,6 +33,7 @@ export interface SellCase {
   lastContactDate: string
   notes: string
   daysInStage: number
+  counterpartyBroker: string  // 購入側の仲介業者（両手の場合は「リベ」、未定は「—」）
 }
 
 export interface BuyCase {
@@ -50,6 +51,7 @@ export interface BuyCase {
   lastContactDate: string
   notes: string
   daysInStage: number
+  counterpartyBroker: string  // 売却側の仲介業者（両手の場合は「リベ」、未定は「—」）
 }
 
 export interface MonthlyStats {
@@ -180,6 +182,7 @@ export const sellCases: SellCase[] = [
     stage: '販売活動', staff: '鈴木',
     startDate: '2026-01-10', lastContactDate: '2026-03-25',
     notes: '3LDK、築15年。内覧希望者3組あり。', daysInStage: 32,
+    counterpartyBroker: '東急リバブル',
   },
   {
     id: 'S002', clientName: '田村 花子', propertyName: '綱島東戸建て',
@@ -189,6 +192,7 @@ export const sellCases: SellCase[] = [
     stage: '媒介契約', staff: '田中',
     startDate: '2026-02-15', lastContactDate: '2026-03-28',
     notes: '4LDK、築8年。専任媒介契約締結済み。', daysInStage: 18,
+    counterpartyBroker: 'リベ',
   },
   {
     id: 'S003', clientName: '佐々木 一郎', propertyName: '代々木レジデンス',
@@ -198,6 +202,7 @@ export const sellCases: SellCase[] = [
     stage: '売買契約', staff: '佐藤',
     startDate: '2025-11-20', lastContactDate: '2026-03-20',
     notes: '2LDK高層階。契約書確認中。', daysInStage: 7,
+    counterpartyBroker: '野村不動産アーバンネット',
   },
   {
     id: 'S004', clientName: '中村 美咲', propertyName: '春日戸建て',
@@ -207,6 +212,7 @@ export const sellCases: SellCase[] = [
     stage: '査定', staff: '山田',
     startDate: '2026-03-18', lastContactDate: '2026-03-28',
     notes: '3LDK、築25年。リフォーム歴あり。', daysInStage: 13,
+    counterpartyBroker: '—',
   },
   {
     id: 'S005', clientName: '渡辺 健二', propertyName: '自由が丘プレミアム',
@@ -216,6 +222,7 @@ export const sellCases: SellCase[] = [
     stage: '決済', staff: '鈴木',
     startDate: '2025-10-05', lastContactDate: '2026-03-31',
     notes: '3LDK、来月決済予定。', daysInStage: 3,
+    counterpartyBroker: 'リベ',
   },
   {
     id: 'S006', clientName: '小林 直子', propertyName: '常盤土地',
@@ -225,6 +232,7 @@ export const sellCases: SellCase[] = [
     stage: '問い合わせ', staff: '伊藤',
     startDate: '2026-03-25', lastContactDate: '2026-03-27',
     notes: '60坪。用途地域確認中。', daysInStage: 6,
+    counterpartyBroker: '—',
   },
   {
     id: 'S007', clientName: '加藤 正雄', propertyName: '荻窪ガーデン',
@@ -234,6 +242,7 @@ export const sellCases: SellCase[] = [
     stage: '販売活動', staff: '田中',
     startDate: '2026-01-28', lastContactDate: '2026-03-22',
     notes: '2LDK、内覧対応中。価格調整検討。', daysInStage: 45,
+    counterpartyBroker: '住友不動産販売',
   },
   {
     id: 'S008', clientName: '松本 恵子', propertyName: '武蔵小杉タワー',
@@ -243,6 +252,7 @@ export const sellCases: SellCase[] = [
     stage: '媒介契約', staff: '佐藤',
     startDate: '2026-02-20', lastContactDate: '2026-03-29',
     notes: '3LDK高層。専属専任媒介。', daysInStage: 12,
+    counterpartyBroker: 'リベ',
   },
   {
     id: 'S009', clientName: '中川 亮', propertyName: '天王寺マンション',
@@ -252,6 +262,7 @@ export const sellCases: SellCase[] = [
     stage: '販売活動', staff: '山田',
     startDate: '2026-02-01', lastContactDate: '2026-03-28',
     notes: '3LDK、築10年。内覧対応中。', daysInStage: 20,
+    counterpartyBroker: '大京穴吹不動産',
   },
   {
     id: 'S010', clientName: '伊藤 明美', propertyName: '西宮戸建て',
@@ -261,6 +272,7 @@ export const sellCases: SellCase[] = [
     stage: '媒介契約', staff: '伊藤',
     startDate: '2026-03-01', lastContactDate: '2026-03-29',
     notes: '4LDK、築12年。専任媒介契約締結済み。', daysInStage: 10,
+    counterpartyBroker: '—',
   },
   {
     id: 'S011', clientName: '鈴木 浩二', propertyName: '名古屋駅前マンション',
@@ -270,6 +282,7 @@ export const sellCases: SellCase[] = [
     stage: '査定', staff: '鈴木',
     startDate: '2026-03-20', lastContactDate: '2026-03-30',
     notes: '2LDK、築18年。査定依頼受付。', daysInStage: 11,
+    counterpartyBroker: '—',
   },
   {
     id: 'S012', clientName: '田中 京子', propertyName: '京都市内町家',
@@ -279,6 +292,7 @@ export const sellCases: SellCase[] = [
     stage: '問い合わせ', staff: '田中',
     startDate: '2026-03-28', lastContactDate: '2026-03-30',
     notes: '町家リノベ物件。問い合わせ初期対応中。', daysInStage: 3,
+    counterpartyBroker: '—',
   },
 ]
 
@@ -291,6 +305,7 @@ export const buyCases: BuyCase[] = [
     stage: '内見', staff: '山田',
     startDate: '2026-02-10', lastContactDate: '2026-03-30',
     notes: '3LDK希望。学区重視。週末内見3件予定。', daysInStage: 15,
+    counterpartyBroker: '東急リバブル',
   },
   {
     id: 'B002', clientName: '高橋 由美', propertyName: '千葉市戸建て',
@@ -300,6 +315,7 @@ export const buyCases: BuyCase[] = [
     stage: '購入申し込み', staff: '鈴木',
     startDate: '2026-01-20', lastContactDate: '2026-03-28',
     notes: '4LDK希望。申込書提出済み。', daysInStage: 8,
+    counterpartyBroker: '野村不動産アーバンネット',
   },
   {
     id: 'B003', clientName: '森 大輔', propertyName: '代々木パークビュー',
@@ -309,6 +325,7 @@ export const buyCases: BuyCase[] = [
     stage: '売買契約', staff: '佐藤',
     startDate: '2025-12-01', lastContactDate: '2026-03-25',
     notes: '2LDK、代々木物件で契約締結。', daysInStage: 5,
+    counterpartyBroker: 'リベ',
   },
   {
     id: 'B004', clientName: '岡田 幸子', propertyName: '浦安シーサイド',
@@ -318,6 +335,7 @@ export const buyCases: BuyCase[] = [
     stage: 'ローン審査', staff: '田中',
     startDate: '2025-11-15', lastContactDate: '2026-03-20',
     notes: '2LDK、銀行審査中。結果待ち。', daysInStage: 21,
+    counterpartyBroker: '住友不動産販売',
   },
   {
     id: 'B005', clientName: '木村 博', propertyName: '江戸川・葛飾エリア',
@@ -327,6 +345,7 @@ export const buyCases: BuyCase[] = [
     stage: '問い合わせ', staff: '伊藤',
     startDate: '2026-03-22', lastContactDate: '2026-03-28',
     notes: '3LDK希望。資金計画相談中。', daysInStage: 9,
+    counterpartyBroker: '—',
   },
   {
     id: 'B006', clientName: '清水 雅代', propertyName: '江東リバーサイド',
@@ -336,6 +355,7 @@ export const buyCases: BuyCase[] = [
     stage: '決済', staff: '山田',
     startDate: '2025-10-20', lastContactDate: '2026-03-31',
     notes: '3LDK、今週決済完了予定。', daysInStage: 2,
+    counterpartyBroker: 'リベ',
   },
   {
     id: 'B007', clientName: '藤田 健太郎', propertyName: '中野・練馬エリア',
@@ -345,6 +365,7 @@ export const buyCases: BuyCase[] = [
     stage: '内見', staff: '鈴木',
     startDate: '2026-03-01', lastContactDate: '2026-03-29',
     notes: '2LDK希望。内見5件実施済み。絞り込み段階。', daysInStage: 22,
+    counterpartyBroker: 'センチュリー21',
   },
   {
     id: 'B008', clientName: '佐藤 美穂', propertyName: '大阪市内マンション',
@@ -354,6 +375,7 @@ export const buyCases: BuyCase[] = [
     stage: '内見', staff: '佐藤',
     startDate: '2026-03-10', lastContactDate: '2026-03-30',
     notes: '2LDK希望。大阪市内で内見実施中。', daysInStage: 12,
+    counterpartyBroker: 'リベ',
   },
   {
     id: 'B009', clientName: '山田 隆史', propertyName: '大阪市中央区エリア',
@@ -363,6 +385,7 @@ export const buyCases: BuyCase[] = [
     stage: '問い合わせ', staff: '山田',
     startDate: '2026-03-27', lastContactDate: '2026-03-30',
     notes: '1LDK〜2LDK希望。問い合わせ初期対応中。', daysInStage: 4,
+    counterpartyBroker: '—',
   },
 ]
 

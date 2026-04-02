@@ -49,6 +49,7 @@ type UnifiedCase = {
   lastContactDate: string
   notes: string
   daysInStage: number
+  counterpartyBroker: string
 }
 
 const allCases: UnifiedCase[] = [
@@ -60,6 +61,7 @@ const allCases: UnifiedCase[] = [
     stage: c.stage, staff: c.staff,
     startDate: c.startDate, lastContactDate: c.lastContactDate,
     notes: c.notes, daysInStage: c.daysInStage,
+    counterpartyBroker: c.counterpartyBroker,
   })),
   ...buyCases.map(c => ({
     id: c.id, type: '購入' as const,
@@ -69,6 +71,7 @@ const allCases: UnifiedCase[] = [
     stage: c.stage, staff: c.staff,
     startDate: c.startDate, lastContactDate: c.lastContactDate,
     notes: c.notes, daysInStage: c.daysInStage,
+    counterpartyBroker: c.counterpartyBroker,
   })),
 ]
 
@@ -143,6 +146,33 @@ export default function CasesPage() {
       label: 'ステータス',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => <StageBadge stage={String(v)} />,
+    },
+    {
+      key: 'counterpartyBroker' as keyof UnifiedCase,
+      label: '仲介',
+      render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => {
+        const isBothHands = String(v) === 'リベ'
+        const counterparty = String(v)
+        return (
+          <div className="text-xs space-y-0.5 min-w-[120px]">
+            {isBothHands ? (
+              <span className="inline-block bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">両手</span>
+            ) : (
+              <span className="inline-block bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">片手</span>
+            )}
+            <div className="text-gray-500 leading-tight">
+              <span className={row.type === '売却' ? 'text-red-500 font-semibold' : 'text-gray-400'}>売</span>
+              <span className="text-gray-300 mx-0.5">:</span>
+              <span>{row.type === '売却' ? 'リベ' : (isBothHands ? 'リベ' : counterparty)}</span>
+            </div>
+            <div className="text-gray-500 leading-tight">
+              <span className={row.type === '購入' ? 'text-blue-500 font-semibold' : 'text-gray-400'}>買</span>
+              <span className="text-gray-300 mx-0.5">:</span>
+              <span>{row.type === '購入' ? 'リベ' : (isBothHands ? 'リベ' : counterparty)}</span>
+            </div>
+          </div>
+        )
+      },
     },
     {
       key: 'staff' as keyof UnifiedCase,

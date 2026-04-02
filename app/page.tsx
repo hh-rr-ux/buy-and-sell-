@@ -33,11 +33,13 @@ export default function DashboardPage() {
   const nearClosing = [
     ...sellCases.filter(c => c.stage === '売買契約' || c.stage === '決済').map(c => ({
       id: c.id, name: c.propertyName, clientName: c.clientName,
-      stage: c.stage, staff: c.staff, fee: calcBrokerageFee(c.askingPrice), type: '売却',
+      stage: c.stage, staff: c.staff, fee: calcBrokerageFee(c.askingPrice), type: '売却' as const,
+      counterpartyBroker: c.counterpartyBroker,
     })),
     ...buyCases.filter(c => c.stage === 'ローン審査' || c.stage === '売買契約' || c.stage === '決済').map(c => ({
       id: c.id, name: c.propertyName, clientName: c.clientName,
-      stage: c.stage, staff: c.staff, fee: calcBrokerageFee(c.budget), type: '購入',
+      stage: c.stage, staff: c.staff, fee: calcBrokerageFee(c.budget), type: '購入' as const,
+      counterpartyBroker: c.counterpartyBroker,
     })),
   ]
 
@@ -45,11 +47,13 @@ export default function DashboardPage() {
   const stalledCases = [
     ...sellCases.filter(c => c.daysInStage > 30).map(c => ({
       id: c.id, name: c.propertyName, clientName: c.clientName,
-      stage: c.stage, staff: c.staff, days: c.daysInStage, type: '売却',
+      stage: c.stage, staff: c.staff, days: c.daysInStage, type: '売却' as const,
+      counterpartyBroker: c.counterpartyBroker,
     })),
     ...buyCases.filter(c => c.daysInStage > 30).map(c => ({
       id: c.id, name: c.propertyName, clientName: c.clientName,
-      stage: c.stage, staff: c.staff, days: c.daysInStage, type: '購入',
+      stage: c.stage, staff: c.staff, days: c.daysInStage, type: '購入' as const,
+      counterpartyBroker: c.counterpartyBroker,
     })),
   ]
 
@@ -264,20 +268,32 @@ export default function DashboardPage() {
               <p className="text-gray-400 text-sm text-center py-4">該当案件なし</p>
             ) : (
               <div className="space-y-2">
-                {nearClosing.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-100">
-                    <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${c.type === '売却' ? 'bg-red-500' : 'bg-blue-500'}`}>{c.type}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.clientName}</p>
+                {nearClosing.map(c => {
+                  const isBothHands = c.counterpartyBroker === 'リベ'
+                  const sellBroker = c.type === '売却' ? 'リベ' : (isBothHands ? 'リベ' : c.counterpartyBroker)
+                  const buyBroker  = c.type === '購入' ? 'リベ' : (isBothHands ? 'リベ' : c.counterpartyBroker)
+                  return (
+                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-100">
+                      <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${c.type === '売却' ? 'bg-red-500' : 'bg-blue-500'}`}>{c.type}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+                        <p className="text-xs text-gray-500">{c.clientName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {isBothHands
+                            ? <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">両手</span>
+                            : <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">片手</span>
+                          }
+                          <span className="text-[10px] text-gray-400">売:<span className="text-gray-600">{sellBroker}</span> 買:<span className="text-gray-600">{buyBroker}</span></span>
+                        </div>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[c.stage] }}>{c.stage}</span>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-green-600">{formatPrice(c.fee)}</p>
+                        <p className="text-xs text-gray-400">{c.staff}</p>
+                      </div>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[c.stage] }}>{c.stage}</span>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-green-600">{formatPrice(c.fee)}</p>
-                      <p className="text-xs text-gray-400">{c.staff}</p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -298,20 +314,32 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {stalledCases.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
-                    <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${c.type === '売却' ? 'bg-red-500' : 'bg-blue-500'}`}>{c.type}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.clientName}</p>
+                {stalledCases.map(c => {
+                  const isBothHands = c.counterpartyBroker === 'リベ'
+                  const sellBroker = c.type === '売却' ? 'リベ' : (isBothHands ? 'リベ' : c.counterpartyBroker)
+                  const buyBroker  = c.type === '購入' ? 'リベ' : (isBothHands ? 'リベ' : c.counterpartyBroker)
+                  return (
+                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
+                      <span className={`text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${c.type === '売却' ? 'bg-red-500' : 'bg-blue-500'}`}>{c.type}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+                        <p className="text-xs text-gray-500">{c.clientName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {isBothHands
+                            ? <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">両手</span>
+                            : <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">片手</span>
+                          }
+                          <span className="text-[10px] text-gray-400">売:<span className="text-gray-600">{sellBroker}</span> 買:<span className="text-gray-600">{buyBroker}</span></span>
+                        </div>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[c.stage] }}>{c.stage}</span>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-red-600">{c.days}日経過</p>
+                        <p className="text-xs text-gray-400">{c.staff}</p>
+                      </div>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[c.stage] }}>{c.stage}</span>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-red-600">{c.days}日経過</p>
-                      <p className="text-xs text-gray-400">{c.staff}</p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
