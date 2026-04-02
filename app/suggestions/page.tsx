@@ -276,24 +276,6 @@ export default function SuggestionsPage() {
         ))}
       </div>
 
-      {/* Footer Note */}
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-        <div className="flex items-start gap-2">
-          <Zap size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-blue-700 mb-1">次のステップ: データ連携の実装</p>
-            <p className="text-xs text-blue-600 leading-relaxed">
-              このダッシュボードを Chatwork API・Google Sheets API と連携することで、
-              リアルタイムデータに基づく自動分析・アラート通知が可能になります。
-              <code className="bg-blue-100 px-1 py-0.5 rounded text-blue-800 mx-1">lib/dataLoader.ts</code>
-              の TODO コメントを参照し、API トークンを設定してください。
-              GitHub Actions の
-              <code className="bg-blue-100 px-1 py-0.5 rounded text-blue-800 mx-1">.github/workflows/fetch-data.yml</code>
-              もあわせて設定することで、定期的な自動取得が実現できます。
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
