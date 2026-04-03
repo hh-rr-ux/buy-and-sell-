@@ -20,7 +20,9 @@ function b64urlDecode(s: string): Uint8Array {
   const padded = pad ? s + '='.repeat(4 - pad) : s
   const b64 = padded.replace(/-/g, '+').replace(/_/g, '/')
   const raw = atob(b64)
-  return Uint8Array.from(raw, c => c.charCodeAt(0))
+  const bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+  return bytes
 }
 
 // ── Key import ────────────────────────────────────────────────────────────
