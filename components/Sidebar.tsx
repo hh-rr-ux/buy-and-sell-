@@ -13,6 +13,8 @@ import {
   MessageSquare,
   TrendingUp,
   MessageCircle,
+  Star,
+  Settings,
 } from 'lucide-react'
 
 const navItems = [
@@ -23,6 +25,11 @@ const navItems = [
   { href: '/analytics',  label: '分析',           icon: BarChart3 },
   { href: '/suggestions', label: 'AI改善',         icon: Lightbulb },
   { href: '/chat',        label: 'AI改善チャット',  icon: MessageSquare },
+]
+
+const adminItems = [
+  { href: '/admin/evaluation', label: '担当者評価',   icon: Star },
+  { href: '/admin/settings',   label: '連携設定',     icon: Settings },
 ]
 
 export default function Sidebar() {
@@ -88,6 +95,34 @@ export default function Sidebar() {
             </li>
           ))}
 
+        </ul>
+
+        <p className="text-white/30 text-[10px] font-semibold uppercase tracking-wider px-2 mt-4 mb-1.5">
+          管理者
+        </p>
+        <ul className="space-y-0.5">
+          {adminItems.map(({ href, label, icon: Icon }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
+                  isActive(href)
+                    ? 'text-white'
+                    : 'text-yellow-400/60 hover:text-yellow-300 hover:bg-white/5'
+                }`}
+                style={isActive(href) ? { backgroundColor: '#0f3460' } : {}}
+              >
+                <Icon size={15} className={isActive(href) ? 'text-yellow-400' : ''} />
+                {label}
+                {isActive(href) && (
+                  <span
+                    className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: '#facc15' }}
+                  />
+                )}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
 
