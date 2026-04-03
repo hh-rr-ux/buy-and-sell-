@@ -444,7 +444,9 @@ export default {
         }
 
         const token = await createSession(role, env);
-        const redirect = url.searchParams.get('next') || '/';
+        const rawNext = url.searchParams.get('next') || '/';
+        // 相対パス（/始まり、//始まりでない）のみ許可してオープンリダイレクトを防止
+        const redirect = /^\/(?!\/)/.test(rawNext) ? rawNext : '/';
         const headers = new Headers();
         headers.append('Location', redirect);
         headers.append('Set-Cookie', sessionCookie(token, SESSION_MAX_AGE));
@@ -462,6 +464,14 @@ export default {
     const role = await getSession(request, env);
     const loginRedirect = `/login?next=${encodeURIComponent(path)}`;
 
+    // セッション確認API（ログイン済みなら誰でも利用可）
+    if (path === '/api/auth/check') {
+      const data = role ? { authed: true, role } : { authed: false };
+      return new Response(JSON.stringify(data), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // API（管理者のみ）
     if (path.startsWith('/api/')) {
       if (role !== 'admin') {
@@ -473,8 +483,8 @@ export default {
       return handleAPI(request, env, path);
     }
 
-    // 管理者ページ（管理者のみ）
-    if (path.startsWith('/admin')) {
+    // 管理者ページ・設定ページ（管理者のみ）
+    if (path.startsWith('/admin') || path.startsWith('/settings')) {
       if (role !== 'admin') {
         return new Response(null, { status: 302, headers: { 'Location': loginRedirect } });
       }
