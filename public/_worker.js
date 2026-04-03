@@ -58,7 +58,7 @@ async function getSettings(env) {
         : raw,
     });
   }
-  return result;
+  return { settings: result, kvAvailable: !!env.SETTINGS_KV };
 }
 
 async function saveSettings(env, updates) {
@@ -197,8 +197,8 @@ async function handleAPI(request, env, path) {
   if (path === '/api/settings') {
     if (request.method === 'GET') {
       try {
-        const settings = await getSettings(env);
-        return json(settings);
+        const result = await getSettings(env);
+        return json(result);
       } catch (e) {
         return json({ error: e.message }, 500);
       }

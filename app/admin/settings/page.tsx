@@ -36,6 +36,7 @@ function SourceBadge({ source }: { source: string }) {
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SettingItem[]>([])
+  const [kvAvailable, setKvAvailable] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editKey, setEditKey] = useState<string | null>(null)
@@ -52,8 +53,9 @@ export default function AdminSettingsPage() {
     try {
       const resp = await fetch('/api/settings')
       const data = await resp.json()
-      if (Array.isArray(data)) {
-        setSettings(data)
+      if (data.settings) {
+        setSettings(data.settings)
+        setKvAvailable(data.kvAvailable)
       } else {
         setError(data.error || '設定の取得に失敗しました')
       }
@@ -257,7 +259,7 @@ export default function AdminSettingsPage() {
         })}
 
         {/* KV未設定の注意 */}
-        {!loading && settings.length > 0 && settings.every(s => s.source !== 'kv') && (
+        {!loading && settings.length > 0 && !kvAvailable && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex items-start gap-3">
             <AlertTriangle size={16} className="text-yellow-500 flex-shrink-0 mt-0.5" />
             <div>
