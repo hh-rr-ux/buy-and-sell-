@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Star,
   Settings,
+  LogOut,
 } from 'lucide-react'
 
 const navItems = [
@@ -138,12 +139,19 @@ export default function Sidebar() {
       <div className="px-4 py-3 border-t border-white/10 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-            管
+            {isAdmin ? '管' : '員'}
           </div>
-          <div>
-            <p className="text-white/80 text-xs font-medium">管理者</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-white/80 text-xs font-medium">{isAdmin ? '管理者' : 'メンバー'}</p>
             <p className="text-white/40 text-[10px]">{currentDate}</p>
           </div>
+          <a
+            href="/logout"
+            className="p-1.5 text-white/30 hover:text-white/80 rounded-lg hover:bg-white/10 transition-all flex-shrink-0"
+            title="ログアウト"
+          >
+            <LogOut size={14} />
+          </a>
         </div>
       </div>
     </aside>
