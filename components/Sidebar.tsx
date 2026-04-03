@@ -38,8 +38,12 @@ export default function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    const match = document.cookie.match(/la_role=([^;]+)/)
-    setIsAdmin(match?.[1] === 'admin')
+    fetch('/api/auth/check')
+      .then(r => r.json())
+      .then((data: { authed: boolean; role?: string }) => {
+        setIsAdmin(data.authed && data.role === 'admin')
+      })
+      .catch(() => {})
   }, [])
 
   const currentDate = useMemo(() => {

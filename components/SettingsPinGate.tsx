@@ -3,14 +3,11 @@
 import { useState, useEffect } from 'react'
 import { Lock, Eye, EyeOff, LogOut } from 'lucide-react'
 
-const CORRECT_ID = process.env.NEXT_PUBLIC_SETTINGS_ID || 'admin'
-const CORRECT_PW = process.env.NEXT_PUBLIC_SETTINGS_PW || 'password'
-const STORAGE_KEY = 'settings_auth'
+const MAX_ATTEMPTS = 5
 
-// ログアウトボタンを他コンポーネントから呼べるよう export
 export function SettingsLogoutButton() {
-  const handleLogout = () => {
-    sessionStorage.removeItem(STORAGE_KEY)
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
     window.location.reload()
   }
   return (
@@ -24,8 +21,6 @@ export function SettingsLogoutButton() {
   )
 }
 
-const MAX_ATTEMPTS = 5
-
 export default function SettingsPinGate({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false)
   const [id, setId] = useState('')
@@ -35,22 +30,38 @@ export default function SettingsPinGate({ children }: { children: React.ReactNod
   const [checked, setChecked] = useState(false)
   const [attempts, setAttempts] = useState(0)
 
+  // Verify existing session via HttpOnly cookie (server-side check)
   useEffect(() => {
-    if (sessionStorage.getItem(STORAGE_KEY) === 'ok') setAuthed(true)
-    setChecked(true)
+    fetch('/api/auth/check')
+      .then(r => r.json())
+      .then((data: { authed: boolean }) => {
+        if (data.authed) setAuthed(true)
+      })
+      .catch(() => {})
+      .finally(() => setChecked(true))
   }, [])
 
   const locked = attempts >= MAX_ATTEMPTS
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (locked) return
-    if (id === CORRECT_ID && pw === CORRECT_PW) {
-      sessionStorage.setItem(STORAGE_KEY, 'ok')
-      setAuthed(true)
-      setError(false)
-    } else {
-      setAttempts(v => v + 1)
+
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, pw }),
+      })
+      if (resp.ok) {
+        setAuthed(true)
+        setError(false)
+      } else {
+        setAttempts(v => v + 1)
+        setError(true)
+        setPw('')
+      }
+    } catch {
       setError(true)
       setPw('')
     }
