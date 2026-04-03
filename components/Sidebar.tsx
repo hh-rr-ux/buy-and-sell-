@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -34,6 +34,12 @@ const adminItems = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const match = document.cookie.match(/la_role=([^;]+)/)
+    setIsAdmin(match?.[1] === 'admin')
+  }, [])
 
   const currentDate = useMemo(() => {
     const now = new Date()
@@ -97,33 +103,35 @@ export default function Sidebar() {
 
         </ul>
 
-        <p className="text-white/30 text-[10px] font-semibold uppercase tracking-wider px-2 mt-4 mb-1.5">
+        {isAdmin && <p className="text-white/30 text-[10px] font-semibold uppercase tracking-wider px-2 mt-4 mb-1.5">
           管理者
-        </p>
-        <ul className="space-y-0.5">
-          {adminItems.map(({ href, label, icon: Icon }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
-                  isActive(href)
-                    ? 'text-white'
-                    : 'text-yellow-400/60 hover:text-yellow-300 hover:bg-white/5'
-                }`}
-                style={isActive(href) ? { backgroundColor: '#0f3460' } : {}}
-              >
-                <Icon size={15} className={isActive(href) ? 'text-yellow-400' : ''} />
-                {label}
-                {isActive(href) && (
-                  <span
-                    className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: '#facc15' }}
-                  />
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        </p>}
+        {isAdmin && (
+          <ul className="space-y-0.5">
+            {adminItems.map(({ href, label, icon: Icon }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
+                    isActive(href)
+                      ? 'text-white'
+                      : 'text-yellow-400/60 hover:text-yellow-300 hover:bg-white/5'
+                  }`}
+                  style={isActive(href) ? { backgroundColor: '#0f3460' } : {}}
+                >
+                  <Icon size={15} className={isActive(href) ? 'text-yellow-400' : ''} />
+                  {label}
+                  {isActive(href) && (
+                    <span
+                      className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: '#facc15' }}
+                    />
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </nav>
 
       {/* フッター */}

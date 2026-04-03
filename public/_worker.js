@@ -44,6 +44,10 @@ function sessionCookie(value, maxAge) {
   return `${SESSION_COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
 }
 
+function roleCookie(role, maxAge) {
+  return `la_role=${role}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+}
+
 // ── ログイン画面 HTML ─────────────────────────────────────────────────────────
 function loginHtml(error = '') {
   return `<!DOCTYPE html>
@@ -411,13 +415,11 @@ export default {
 
     // ── ログアウト ──
     if (path === '/logout') {
-      return new Response(null, {
-        status: 302,
-        headers: {
-          'Location': '/login',
-          'Set-Cookie': sessionCookie('', 0),
-        },
-      });
+      const headers = new Headers();
+      headers.append('Location', '/login');
+      headers.append('Set-Cookie', sessionCookie('', 0));
+      headers.append('Set-Cookie', roleCookie('', 0));
+      return new Response(null, { status: 302, headers });
     }
 
     // ── ログイン画面 ──
@@ -443,13 +445,11 @@ export default {
 
         const token = await createSession(role, env);
         const redirect = url.searchParams.get('next') || '/';
-        return new Response(null, {
-          status: 302,
-          headers: {
-            'Location': redirect,
-            'Set-Cookie': sessionCookie(token, SESSION_MAX_AGE),
-          },
-        });
+        const headers = new Headers();
+        headers.append('Location', redirect);
+        headers.append('Set-Cookie', sessionCookie(token, SESSION_MAX_AGE));
+        headers.append('Set-Cookie', roleCookie(role, SESSION_MAX_AGE));
+        return new Response(null, { status: 302, headers });
       }
 
       // GET /login
