@@ -1,23 +1,232 @@
-// ── 認証チェック ─────────────────────────────────────────────────────────────
-function checkAuth(request, validUser, validPass) {
-  if (!validUser || !validPass) return false;
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Basic ')) return false;
-  const decoded = atob(authHeader.slice(6));
-  const idx = decoded.indexOf(':');
-  const user = decoded.slice(0, idx);
-  const pass = decoded.slice(idx + 1);
-  return user === validUser && pass === validPass;
+// ── セッション管理 ────────────────────────────────────────────────────────────
+const SESSION_COOKIE = 'la_session';
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30日
+
+function getSecret(env) {
+  return env.SESSION_SECRET || (env.BASIC_AUTH_PASS + env.BASIC_AUTH_ADMIN_PASS);
 }
 
-function unauthorizedResponse(realm) {
-  return new Response('認証が必要です', {
-    status: 401,
-    headers: {
-      'WWW-Authenticate': `Basic realm="${realm}"`,
-      'Content-Type': 'text/plain; charset=utf-8',
-    },
-  });
+async function signPayload(payload, secret) {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+async function createSession(role, env) {
+  const payload = `${role}:${Date.now()}`;
+  const sig = await signPayload(payload, getSecret(env));
+  return btoa(payload) + '.' + sig;
+}
+
+async function getSession(request, env) {
+  const cookieHeader = request.headers.get('Cookie') || '';
+  const match = cookieHeader.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
+  if (!match) return null;
+  try {
+    const [payloadB64, sig] = match[1].split('.');
+    if (!payloadB64 || !sig) return null;
+    const payload = atob(payloadB64);
+    const [role, ts] = payload.split(':');
+    if (!role || !ts) return null;
+    if (Date.now() - parseInt(ts) > SESSION_MAX_AGE * 1000) return null;
+    const expected = await signPayload(payload, getSecret(env));
+    if (expected !== sig) return null;
+    return role; // 'member' or 'admin'
+  } catch {
+    return null;
+  }
+}
+
+function sessionCookie(value, maxAge) {
+  return `${SESSION_COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+}
+
+// ── ログイン画面 HTML ─────────────────────────────────────────────────────────
+function loginHtml(error = '') {
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ログイン — LA Estate</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 60%, #16213e 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+  }
+  .card {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 20px;
+    padding: 44px 40px 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .logo-icon {
+    width: 42px;
+    height: 42px;
+    background: #e94560;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-icon svg { width: 22px; height: 22px; fill: white; }
+  .logo-text h1 { color: white; font-size: 16px; font-weight: 700; line-height: 1.2; }
+  .logo-text p  { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 2px; }
+  .field {
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .field label {
+    display: block;
+    color: rgba(255,255,255,0.55);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .input-wrap { position: relative; }
+  .field input {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 13px 16px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .field input:focus {
+    border-color: #e94560;
+    background: rgba(255,255,255,0.09);
+  }
+  .field input::placeholder { color: rgba(255,255,255,0.2); }
+  .field input.has-toggle { padding-right: 48px; }
+  .toggle-btn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255,255,255,0.35);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+  }
+  .toggle-btn:hover { color: rgba(255,255,255,0.7); }
+  .toggle-btn svg { width: 18px; height: 18px; }
+  .error {
+    background: rgba(233,69,96,0.15);
+    border: 1px solid rgba(233,69,96,0.35);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: #ff8fa3;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn {
+    width: 100%;
+    background: #e94560;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.03em;
+  }
+  .btn:hover  { background: #d63651; }
+  .btn:active { transform: scale(0.98); }
+  .footer {
+    text-align: center;
+    margin-top: 24px;
+    color: rgba(255,255,255,0.2);
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    </div>
+    <div class="logo-text">
+      <h1>不動産売買管理</h1>
+      <p>LA Estate Dashboard</p>
+    </div>
+  </div>
+
+  ${error ? `<div class="error"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>${error}</div>` : ''}
+
+  <form method="POST" action="/login">
+    <div class="field">
+      <label>ユーザーID</label>
+      <div class="input-wrap">
+        <input type="text" name="user" placeholder="IDを入力" autocomplete="username" required />
+      </div>
+    </div>
+    <div class="field">
+      <label>パスワード</label>
+      <div class="input-wrap">
+        <input type="password" name="pass" id="pass" placeholder="パスワードを入力" autocomplete="current-password" class="has-toggle" required />
+        <button type="button" class="toggle-btn" onclick="togglePass()" id="toggleBtn" aria-label="パスワードを表示">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <button type="submit" class="btn">ログイン</button>
+  </form>
+
+  <div class="footer">LA Estate © 2026</div>
+</div>
+<script>
+function togglePass() {
+  const input = document.getElementById('pass');
+  const icon  = document.getElementById('eyeIcon');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23" stroke-width="2"/>';
+  } else {
+    input.type = 'password';
+    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+</script>
+</body>
+</html>`;
 }
 
 // ── 設定管理（KV） ────────────────────────────────────────────────────────────
@@ -62,9 +271,7 @@ async function getSettings(env) {
 }
 
 async function saveSettings(env, updates) {
-  if (!env.SETTINGS_KV) {
-    throw new Error('KV ストレージが設定されていません。Cloudflare Pages の設定で SETTINGS_KV バインディングを追加してください。');
-  }
+  if (!env.SETTINGS_KV) throw new Error('KV ストレージが設定されていません。');
   const validKeys = SETTINGS_KEYS.map(d => d.key);
   for (const [key, value] of Object.entries(updates)) {
     if (!validKeys.includes(key)) continue;
@@ -82,17 +289,15 @@ const STAFF_LIST = ['しも', 'まさ', 'ケン', 'のぶ', 'アキ'];
 async function generateEvaluation(env) {
   const chatworkToken = await getRawValue(env, 'CHATWORK_API_TOKEN');
   const anthropicKey  = await getRawValue(env, 'ANTHROPIC_API_KEY');
-  const roomOps       = await getRawValue(env, 'CHATWORK_ROOM_OPERATIONS');
 
   if (!chatworkToken) throw new Error('CHATWORK_API_TOKEN が未設定です');
   if (!anthropicKey)  throw new Error('ANTHROPIC_API_KEY が未設定です');
 
-  // Chatwork から直近メッセージ取得
   const messages = [];
   const rooms = [
-    { key: 'CHATWORK_ROOM_OPERATIONS',   name: '運用' },
-    { key: 'CHATWORK_ROOM_HP_LINE',      name: 'HP/LINE' },
-    { key: 'CHATWORK_ROOM_RECRUITMENT',  name: '求人' },
+    { key: 'CHATWORK_ROOM_OPERATIONS',  name: '運用' },
+    { key: 'CHATWORK_ROOM_HP_LINE',     name: 'HP/LINE' },
+    { key: 'CHATWORK_ROOM_RECRUITMENT', name: '求人' },
   ];
 
   for (const room of rooms) {
@@ -113,12 +318,9 @@ async function generateEvaluation(env) {
           })));
         }
       }
-    } catch (e) {
-      // ルーム取得失敗は無視して続行
-    }
+    } catch {}
   }
 
-  // 担当者ごとにメッセージをまとめる
   const staffData = STAFF_LIST.map(name => {
     const msgs = messages.filter(m => m.name.includes(name));
     return {
@@ -164,16 +366,11 @@ JSONのみ返答してください。`;
     }),
   });
 
-  if (!aiResp.ok) {
-    const errText = await aiResp.text();
-    throw new Error(`Anthropic API エラー: ${aiResp.status}`);
-  }
-
+  if (!aiResp.ok) throw new Error(`Anthropic API エラー: ${aiResp.status}`);
   const aiData = await aiResp.json();
   const content = aiData.content?.[0]?.text || '';
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('AI レスポンスのパースに失敗しました');
-
   return JSON.parse(jsonMatch[0]);
 }
 
@@ -186,31 +383,20 @@ async function handleAPI(request, env, path) {
     });
 
   if (path === '/api/evaluation' && request.method === 'GET') {
-    try {
-      const result = await generateEvaluation(env);
-      return json(result);
-    } catch (e) {
-      return json({ error: e.message }, 500);
-    }
+    try { return json(await generateEvaluation(env)); }
+    catch (e) { return json({ error: e.message }, 500); }
   }
 
   if (path === '/api/settings') {
     if (request.method === 'GET') {
-      try {
-        const result = await getSettings(env);
-        return json(result);
-      } catch (e) {
-        return json({ error: e.message }, 500);
-      }
+      try { return json(await getSettings(env)); }
+      catch (e) { return json({ error: e.message }, 500); }
     }
     if (request.method === 'POST') {
       try {
-        const body = await request.json();
-        await saveSettings(env, body);
+        await saveSettings(env, await request.json());
         return json({ ok: true });
-      } catch (e) {
-        return json({ error: e.message }, 500);
-      }
+      } catch (e) { return json({ error: e.message }, 500); }
     }
   }
 
@@ -223,28 +409,81 @@ export default {
     const url  = new URL(request.url);
     const path = url.pathname;
 
-    // APIルート（管理者のみ）
+    // ── ログアウト ──
+    if (path === '/logout') {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': '/login',
+          'Set-Cookie': sessionCookie('', 0),
+        },
+      });
+    }
+
+    // ── ログイン画面 ──
+    if (path === '/login') {
+      if (request.method === 'POST') {
+        const body = await request.formData();
+        const user = body.get('user') || '';
+        const pass = body.get('pass') || '';
+
+        let role = null;
+        if (user === env.BASIC_AUTH_ADMIN_USER && pass === env.BASIC_AUTH_ADMIN_PASS) {
+          role = 'admin';
+        } else if (user === env.BASIC_AUTH_USER && pass === env.BASIC_AUTH_PASS) {
+          role = 'member';
+        }
+
+        if (!role) {
+          return new Response(loginHtml('IDまたはパスワードが正しくありません'), {
+            status: 401,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          });
+        }
+
+        const token = await createSession(role, env);
+        const redirect = url.searchParams.get('next') || '/';
+        return new Response(null, {
+          status: 302,
+          headers: {
+            'Location': redirect,
+            'Set-Cookie': sessionCookie(token, SESSION_MAX_AGE),
+          },
+        });
+      }
+
+      // GET /login
+      return new Response(loginHtml(), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    }
+
+    // ── セッション確認 ──
+    const role = await getSession(request, env);
+    const loginRedirect = `/login?next=${encodeURIComponent(path)}`;
+
+    // API（管理者のみ）
     if (path.startsWith('/api/')) {
-      if (!checkAuth(request, env.BASIC_AUTH_ADMIN_USER, env.BASIC_AUTH_ADMIN_PASS)) {
-        return unauthorizedResponse('LA Estate Admin');
+      if (role !== 'admin') {
+        return new Response(JSON.stringify({ error: '管理者権限が必要です' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
       return handleAPI(request, env, path);
     }
 
     // 管理者ページ（管理者のみ）
     if (path.startsWith('/admin')) {
-      if (!checkAuth(request, env.BASIC_AUTH_ADMIN_USER, env.BASIC_AUTH_ADMIN_PASS)) {
-        return unauthorizedResponse('LA Estate Admin');
+      if (role !== 'admin') {
+        return new Response(null, { status: 302, headers: { 'Location': loginRedirect } });
       }
       return env.ASSETS.fetch(request);
     }
 
-    // 通常ページ（メンバー or 管理者）
-    const isMember = checkAuth(request, env.BASIC_AUTH_USER, env.BASIC_AUTH_PASS);
-    const isAdmin  = checkAuth(request, env.BASIC_AUTH_ADMIN_USER, env.BASIC_AUTH_ADMIN_PASS);
-
-    if (!isMember && !isAdmin) {
-      return unauthorizedResponse('LA Estate');
+    // 通常ページ（ログイン済みなら誰でも）
+    if (!role) {
+      return new Response(null, { status: 302, headers: { 'Location': loginRedirect } });
     }
 
     return env.ASSETS.fetch(request);
