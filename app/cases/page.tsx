@@ -125,7 +125,7 @@ export default function CasesPage() {
   const columns = [
     {
       key: 'id' as keyof UnifiedCase,
-      label: 'ID',
+      label: '管理No',
       sortable: true,
       width: 'w-16',
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
@@ -199,7 +199,7 @@ export default function CasesPage() {
     },
     {
       key: 'fee' as keyof UnifiedCase,
-      label: '仲介手数料',
+      label: '仲介手数料（税込）',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
         <span className="font-semibold text-indigo-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
@@ -220,7 +220,7 @@ export default function CasesPage() {
     },
     {
       key: 'lastContactDate' as keyof UnifiedCase,
-      label: '最終連絡',
+      label: '決済日',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
         <span className="text-xs text-gray-500">{String(v)}</span>
@@ -303,7 +303,7 @@ export default function CasesPage() {
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">ステージ</label>
+          <label className="text-xs text-gray-500">ステータス</label>
           <select
             value={filterStage}
             onChange={e => setFilterStage(e.target.value)}
@@ -314,7 +314,7 @@ export default function CasesPage() {
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">担当</label>
+          <label className="text-xs text-gray-500">担当者</label>
           <select
             value={filterStaff}
             onChange={e => setFilterStaff(e.target.value)}

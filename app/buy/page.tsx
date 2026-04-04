@@ -57,7 +57,7 @@ export default function BuyPage() {
   const columns = [
     {
       key: 'id' as keyof BuyCase,
-      label: 'ID',
+      label: '管理No',
       sortable: true,
       width: 'w-16',
       render: (v: BuyCase[keyof BuyCase]) => (
@@ -124,7 +124,7 @@ export default function BuyPage() {
     },
     {
       key: 'lastContactDate' as keyof BuyCase,
-      label: '最終連絡',
+      label: '決済日',
       sortable: true,
       render: (v: BuyCase[keyof BuyCase]) => (
         <span className="text-xs text-gray-500">{String(v)}</span>
@@ -199,7 +199,7 @@ export default function BuyPage() {
           <span className="text-sm text-gray-500 font-medium">絞り込み</span>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">ステージ</label>
+          <label className="text-xs text-gray-500">ステータス</label>
           <select
             value={filterStage}
             onChange={(e) => setFilterStage(e.target.value as BuyStage | 'すべて')}
@@ -210,7 +210,7 @@ export default function BuyPage() {
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">担当</label>
+          <label className="text-xs text-gray-500">担当者</label>
           <select
             value={filterStaff}
             onChange={(e) => setFilterStaff(e.target.value as Staff | 'すべて')}
