@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - main
-  # 6時間ごとにデータを最新化して再デプロイ
+  # 12時間ごとにデータを最新化して再デプロイ
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */12 * * *'
   workflow_dispatch:
 
 jobs:
