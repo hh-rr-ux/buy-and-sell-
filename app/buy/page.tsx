@@ -91,7 +91,7 @@ export default function BuyPage() {
       label: '予算',
       sortable: true,
       render: (v: BuyCase[keyof BuyCase]) => (
-        <span className="font-semibold text-blue-600">{formatPrice(Number(v))}</span>
+        <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
       ),
     },
     {

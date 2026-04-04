@@ -191,10 +191,10 @@ export default function CasesPage() {
     },
     {
       key: 'price' as keyof UnifiedCase,
-      label: '物件価格',
+      label: '販売価格',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
-        <span className="font-semibold text-blue-600">{formatPrice(Number(v))}</span>
+        <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
       ),
     },
     {
@@ -202,7 +202,7 @@ export default function CasesPage() {
       label: '仲介手数料',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
-        <span className="font-semibold text-indigo-600">{formatPrice(Number(v))}</span>
+        <span className="font-semibold text-indigo-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
       ),
     },
     {

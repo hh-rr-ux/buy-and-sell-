@@ -91,7 +91,7 @@ export default function SellPage() {
       label: '希望価格',
       sortable: true,
       render: (v: SellCase[keyof SellCase]) => (
-        <span className="font-semibold text-blue-600">{formatPrice(Number(v))}</span>
+        <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
       ),
     },
     {
