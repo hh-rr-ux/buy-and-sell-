@@ -1,13 +1,18 @@
+'use client'
+
 export const dynamic = 'force-static'
 
 import { TrendingUp, TrendingDown, Banknote, Users, MapPin } from 'lucide-react'
 import {
-  sellCases, buyCases, monthlyStats, staffStats,
+  staffStats,
   calcBrokerageFee, formatPrice,
   SELL_AREAS, BUY_AREAS,
 } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 
 export default function SalesPage() {
+  const { sellCases, buyCases, monthlyStats } = useSheetData()
+
   const maxRevenue = Math.max(...monthlyStats.map(s => s.revenue))
   const current = monthlyStats[monthlyStats.length - 1]
   const prev = monthlyStats[monthlyStats.length - 2]

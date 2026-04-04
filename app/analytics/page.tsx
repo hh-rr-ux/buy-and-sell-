@@ -18,23 +18,10 @@ import {
   Line,
 } from 'recharts'
 import { BarChart3, TrendingUp, Target, MessageCircle, MapPin } from 'lucide-react'
-import { monthlyStats, staffStats, conversionFunnel, sellCases, buyCases, lineInquiries, SELL_AREAS, BUY_AREAS, formatPrice } from '@/lib/mockData'
+import { staffStats, conversionFunnel, lineInquiries, SELL_AREAS, BUY_AREAS, formatPrice } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f97316', '#eab308', '#22c55e']
-
-const stageDistribution = [
-  { name: '問い合わせ', value: sellCases.filter(c => c.stage === '問い合わせ').length + buyCases.filter(c => c.stage === '問い合わせ').length },
-  { name: '査定/内見', value: sellCases.filter(c => c.stage === '査定').length + buyCases.filter(c => c.stage === '内見').length },
-  { name: '媒介契約/申込', value: sellCases.filter(c => c.stage === '媒介契約').length + buyCases.filter(c => c.stage === '購入申し込み').length },
-  { name: '販売活動/審査', value: sellCases.filter(c => c.stage === '販売活動').length + buyCases.filter(c => c.stage === 'ローン審査').length },
-  { name: '売買契約', value: sellCases.filter(c => c.stage === '売買契約').length + buyCases.filter(c => c.stage === '売買契約').length },
-  { name: '決済', value: sellCases.filter(c => c.stage === '決済').length + buyCases.filter(c => c.stage === '決済').length },
-]
-
-const revenueData = monthlyStats.map((m) => ({
-  ...m,
-  revenueM: Math.round(m.revenue / 10000),
-}))
 
 
 const CustomTooltip = ({ active, payload, label }: {
@@ -60,6 +47,22 @@ const CustomTooltip = ({ active, payload, label }: {
 }
 
 export default function AnalyticsPage() {
+  const { sellCases, buyCases, monthlyStats } = useSheetData()
+
+  const stageDistribution = [
+    { name: '問い合わせ',     value: sellCases.filter(c => c.stage === '問い合わせ').length  + buyCases.filter(c => c.stage === '問い合わせ').length },
+    { name: '査定/内見',      value: sellCases.filter(c => c.stage === '査定').length        + buyCases.filter(c => c.stage === '内見').length },
+    { name: '媒介契約/申込',  value: sellCases.filter(c => c.stage === '媒介契約').length    + buyCases.filter(c => c.stage === '購入申し込み').length },
+    { name: '販売活動/審査',  value: sellCases.filter(c => c.stage === '販売活動').length    + buyCases.filter(c => c.stage === 'ローン審査').length },
+    { name: '売買契約',       value: sellCases.filter(c => c.stage === '売買契約').length    + buyCases.filter(c => c.stage === '売買契約').length },
+    { name: '決済',           value: sellCases.filter(c => c.stage === '決済').length        + buyCases.filter(c => c.stage === '決済').length },
+  ]
+
+  const revenueData = monthlyStats.map((m) => ({
+    ...m,
+    revenueM: Math.round(m.revenue / 10000),
+  }))
+
   const totalClosed = monthlyStats.reduce((sum, m) => sum + m.closedSell + m.closedBuy, 0)
   const totalInquiries = monthlyStats.reduce((sum, m) => sum + m.newInquiries, 0)
   const totalRevenue = monthlyStats.reduce((sum, m) => sum + m.revenue, 0)
@@ -280,6 +283,8 @@ export default function AnalyticsPage() {
 }
 
 function AreaAnalysisSection() {
+  const { sellCases, buyCases } = useSheetData()
+
   // 売却: エリア別集計
   const sellAreaData = Object.entries(SELL_AREAS).map(([area, prefs]) => {
     const cases = sellCases.filter(c => prefs.includes(c.prefecture))
@@ -544,6 +549,8 @@ function AreaAnalysisSection() {
 }
 
 function LineAnalysisSection() {
+  const { monthlyStats } = useSheetData()
+
   // 月別集計（仮値 ※スプシ連携後に実データへ置換）
   const monthlyLine = [
     { month: '10月', count: 38, converted: 3 },

@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { TrendingDown, LayoutGrid, List, Filter } from 'lucide-react'
 import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
-import { sellCases, SELL_STAGES, type SellCase, type SellStage, type Staff } from '@/lib/mockData'
+import { SELL_STAGES, type SellCase, type SellStage, type Staff } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 
 const SELL_STAGE_COLORS: Record<string, string> = {
   '問い合わせ': '#6b7280',
@@ -37,6 +38,7 @@ function StageBadge({ stage }: { stage: string }) {
 }
 
 export default function SellPage() {
+  const { sellCases } = useSheetData()
   const [view, setView] = useState<'board' | 'table'>('board')
   const [filterStage, setFilterStage] = useState<SellStage | 'すべて'>('すべて')
   const [filterStaff, setFilterStaff] = useState<Staff | 'すべて'>('すべて')

@@ -1,3 +1,5 @@
+'use client'
+
 export const dynamic = 'force-static'
 
 import {
@@ -14,7 +16,8 @@ import {
   Scale,
   Code2,
 } from 'lucide-react'
-import { sellCases, buyCases, staffStats } from '@/lib/mockData'
+import { staffStats } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 
 interface Suggestion {
   priority: 'high' | 'medium' | 'low'
@@ -120,6 +123,8 @@ function SuggestionCard({ s }: { s: Suggestion }) {
 }
 
 export default function SuggestionsPage() {
+  const { sellCases, buyCases } = useSheetData()
+
   // Rule-based analysis
   const stalledSellCount = sellCases.filter(c => c.stage === '販売活動' && c.daysInStage > 30).length
   const maxStaffCases = Math.max(...staffStats.map(s => s.activeCases))

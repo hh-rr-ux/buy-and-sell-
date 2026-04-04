@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { ShoppingCart, LayoutGrid, List, Filter } from 'lucide-react'
 import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
-import { buyCases, BUY_STAGES, type BuyCase, type BuyStage, type Staff } from '@/lib/mockData'
+import { BUY_STAGES, type BuyCase, type BuyStage, type Staff } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 
 const BUY_STAGE_COLORS: Record<string, string> = {
   '問い合わせ': '#6b7280',
@@ -37,6 +38,7 @@ function StageBadge({ stage }: { stage: string }) {
 }
 
 export default function BuyPage() {
+  const { buyCases } = useSheetData()
   const [view, setView] = useState<'board' | 'table'>('board')
   const [filterStage, setFilterStage] = useState<BuyStage | 'すべて'>('すべて')
   const [filterStaff, setFilterStaff] = useState<Staff | 'すべて'>('すべて')

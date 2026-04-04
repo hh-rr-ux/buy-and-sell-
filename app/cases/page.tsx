@@ -7,10 +7,11 @@ import { ClipboardList, LayoutGrid, List, Filter } from 'lucide-react'
 import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
 import {
-  sellCases, buyCases, SELL_STAGES, BUY_STAGES,
+  SELL_STAGES, BUY_STAGES,
   calcBrokerageFee, formatPrice,
   type SellCase, type BuyCase, type Staff,
 } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 
 const STAGE_COLORS: Record<string, string> = {
   '問い合わせ':    '#6b7280',
@@ -52,28 +53,30 @@ type UnifiedCase = {
   counterpartyBroker: string
 }
 
-const allCases: UnifiedCase[] = [
-  ...sellCases.map(c => ({
-    id: c.id, type: '売却' as const,
-    clientName: c.clientName, propertyName: c.propertyName,
-    propertyAddress: c.propertyAddress, propertyType: c.propertyType,
-    price: c.askingPrice, fee: calcBrokerageFee(c.askingPrice),
-    stage: c.stage, staff: c.staff,
-    startDate: c.startDate, lastContactDate: c.lastContactDate,
-    notes: c.notes, daysInStage: c.daysInStage,
-    counterpartyBroker: c.counterpartyBroker,
-  })),
-  ...buyCases.map(c => ({
-    id: c.id, type: '購入' as const,
-    clientName: c.clientName, propertyName: c.propertyName,
-    desiredArea: c.desiredArea, propertyType: c.propertyType,
-    price: c.budget, fee: calcBrokerageFee(c.budget),
-    stage: c.stage, staff: c.staff,
-    startDate: c.startDate, lastContactDate: c.lastContactDate,
-    notes: c.notes, daysInStage: c.daysInStage,
-    counterpartyBroker: c.counterpartyBroker,
-  })),
-]
+function buildAllCases(sells: SellCase[], buys: BuyCase[]): UnifiedCase[] {
+  return [
+    ...sells.map(c => ({
+      id: c.id, type: '売却' as const,
+      clientName: c.clientName, propertyName: c.propertyName,
+      propertyAddress: c.propertyAddress, propertyType: c.propertyType,
+      price: c.askingPrice, fee: calcBrokerageFee(c.askingPrice),
+      stage: c.stage, staff: c.staff,
+      startDate: c.startDate, lastContactDate: c.lastContactDate,
+      notes: c.notes, daysInStage: c.daysInStage,
+      counterpartyBroker: c.counterpartyBroker,
+    })),
+    ...buys.map(c => ({
+      id: c.id, type: '購入' as const,
+      clientName: c.clientName, propertyName: c.propertyName,
+      desiredArea: c.desiredArea, propertyType: c.propertyType,
+      price: c.budget, fee: calcBrokerageFee(c.budget),
+      stage: c.stage, staff: c.staff,
+      startDate: c.startDate, lastContactDate: c.lastContactDate,
+      notes: c.notes, daysInStage: c.daysInStage,
+      counterpartyBroker: c.counterpartyBroker,
+    })),
+  ]
+}
 
 function StageBadge({ stage }: { stage: string }) {
   return (
@@ -87,6 +90,9 @@ function StageBadge({ stage }: { stage: string }) {
 }
 
 export default function CasesPage() {
+  const { sellCases, buyCases } = useSheetData()
+  const allCases = buildAllCases(sellCases, buyCases)
+
   const [view, setView]             = useState<'board' | 'table'>('board')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('すべて')
   const [filterStage, setFilterStage] = useState<string>('すべて')
