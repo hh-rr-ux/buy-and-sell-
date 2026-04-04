@@ -8,7 +8,7 @@ import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
 import {
   SELL_STAGES, BUY_STAGES,
-  calcBrokerageFee, formatPrice,
+  formatPrice,
   type SellCase, type BuyCase, type Staff,
 } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
@@ -35,47 +35,63 @@ const ALL_STAGES = [
 
 type TypeFilter = 'すべて' | '売却' | '購入'
 
-// 統合型
+// 統合型 — シート列に対応
 type UnifiedCase = {
   id: string
   type: '売却' | '購入'
-  clientName: string
-  propertyName: string
-  propertyAddress?: string
-  desiredArea?: string
-  propertyType: string
-  price: number
-  fee: number
-  stage: string
-  staff: Staff
-  startDate: string
-  lastContactDate: string
-  notes: string
-  daysInStage: number
+  clientName: string        // 顧客名
+  propertyName: string      // 物件名
+  propertyType: string      // 物件種別
+  location: string          // 所在地（市区名）
+  stage: string             // ステータス
   counterpartyBroker: string
+  staff: Staff              // 担当者
+  askingPrice: number       // 販売価格（売却のみ）
+  budget: number            // 買付価格（購入のみ）
+  contractPrice: number     // 成約価格（購入のみ）
+  fee: number               // 仲介手数料（税込）— シート実値
+  daysInStage: number
+  lastContactDate: string   // 決済日
+  notes: string             // メモ
 }
 
 function buildAllCases(sells: SellCase[], buys: BuyCase[]): UnifiedCase[] {
   return [
     ...sells.map(c => ({
-      id: c.id, type: '売却' as const,
-      clientName: c.clientName, propertyName: c.propertyName,
-      propertyAddress: c.propertyAddress, propertyType: c.propertyType,
-      price: c.askingPrice, fee: calcBrokerageFee(c.askingPrice),
-      stage: c.stage, staff: c.staff,
-      startDate: c.startDate, lastContactDate: c.lastContactDate,
-      notes: c.notes, daysInStage: c.daysInStage,
+      id:                 c.id,
+      type:               '売却' as const,
+      clientName:         c.clientName,
+      propertyName:       c.propertyName,
+      propertyType:       c.propertyType,
+      location:           c.propertyAddress || '',
+      stage:              c.stage,
       counterpartyBroker: c.counterpartyBroker,
+      staff:              c.staff,
+      askingPrice:        c.askingPrice,
+      budget:             0,
+      contractPrice:      0,
+      fee:                c.brokerageFee,   // シートの「仲介手数料（税込）」列
+      daysInStage:        c.daysInStage,
+      lastContactDate:    c.lastContactDate,
+      notes:              c.notes,
     })),
     ...buys.map(c => ({
-      id: c.id, type: '購入' as const,
-      clientName: c.clientName, propertyName: c.propertyName,
-      desiredArea: c.desiredArea, propertyType: c.propertyType,
-      price: c.budget, fee: calcBrokerageFee(c.budget),
-      stage: c.stage, staff: c.staff,
-      startDate: c.startDate, lastContactDate: c.lastContactDate,
-      notes: c.notes, daysInStage: c.daysInStage,
+      id:                 c.id,
+      type:               '購入' as const,
+      clientName:         c.clientName,
+      propertyName:       c.propertyName,
+      propertyType:       c.propertyType,
+      location:           c.desiredArea || '',
+      stage:              c.stage,
       counterpartyBroker: c.counterpartyBroker,
+      staff:              c.staff,
+      askingPrice:        0,
+      budget:             c.budget,
+      contractPrice:      c.contractPrice,
+      fee:                c.brokerageFee,   // シートの「仲介手数料（税込）」列
+      daysInStage:        c.daysInStage,
+      lastContactDate:    c.lastContactDate,
+      notes:              c.notes,
     })),
   ]
 }
@@ -95,19 +111,19 @@ export default function CasesPage() {
   const { sellCases, buyCases } = useSheetData()
   const allCases = buildAllCases(sellCases, buyCases)
 
-  const [view, setView]             = useState<'board' | 'table'>('board')
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('すべて')
+  const [view, setView]               = useState<'board' | 'table'>('board')
+  const [typeFilter, setTypeFilter]   = useState<TypeFilter>('すべて')
   const [filterStage, setFilterStage] = useState<string>('すべて')
   const [filterStaff, setFilterStaff] = useState<string>('すべて')
 
   const filtered = allCases.filter(c => {
-    if (typeFilter   !== 'すべて' && c.type  !== typeFilter)   return false
-    if (filterStage  !== 'すべて' && c.stage !== filterStage)  return false
-    if (filterStaff  !== 'すべて' && c.staff !== filterStaff)  return false
+    if (typeFilter  !== 'すべて' && c.type  !== typeFilter)  return false
+    if (filterStage !== 'すべて' && c.stage !== filterStage) return false
+    if (filterStaff !== 'すべて' && c.staff !== filterStaff) return false
     return true
   })
 
-  // ボード表示用のステージ一覧（フィルタに応じて切替、相談終了も含む）
+  // ボード表示用のステージ一覧
   const boardStages =
     typeFilter === '売却' ? [...SELL_STAGES, '相談終了'] :
     typeFilter === '購入' ? [...BUY_STAGES, '相談終了'] :
@@ -122,6 +138,7 @@ export default function CasesPage() {
     color: STAGE_COLORS[s],
   }))
 
+  // シート列順に合わせたカラム定義
   const columns = [
     {
       key: 'id' as keyof UnifiedCase,
@@ -142,11 +159,33 @@ export default function CasesPage() {
       ),
     },
     {
+      key: 'clientName' as keyof UnifiedCase,
+      label: '顧客名',
+      sortable: true,
+      render: (v: UnifiedCase[keyof UnifiedCase]) => (
+        <span className="font-medium text-gray-800">{String(v)}</span>
+      ),
+    },
+    {
       key: 'propertyName' as keyof UnifiedCase,
       label: '物件名',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
-        <span className="font-medium text-gray-800">{String(v)}</span>
+        <span className="text-gray-700">{String(v)}</span>
+      ),
+    },
+    {
+      key: 'propertyType' as keyof UnifiedCase,
+      label: '物件種別',
+      render: (v: UnifiedCase[keyof UnifiedCase]) => (
+        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{String(v) || '—'}</span>
+      ),
+    },
+    {
+      key: 'location' as keyof UnifiedCase,
+      label: '所在地（市区名）',
+      render: (v: UnifiedCase[keyof UnifiedCase]) => (
+        <span className="text-xs text-gray-500">{String(v) || '—'}</span>
       ),
     },
     {
@@ -190,7 +229,7 @@ export default function CasesPage() {
       ),
     },
     {
-      key: 'price' as keyof UnifiedCase,
+      key: 'askingPrice' as keyof UnifiedCase,
       label: '販売価格',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => (
@@ -200,12 +239,22 @@ export default function CasesPage() {
       ),
     },
     {
-      key: 'price' as keyof UnifiedCase,
+      key: 'budget' as keyof UnifiedCase,
       label: '買付価格',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => (
         row.type === '購入'
           ? <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
+          : <span className="text-gray-300">—</span>
+      ),
+    },
+    {
+      key: 'contractPrice' as keyof UnifiedCase,
+      label: '成約価格',
+      sortable: true,
+      render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => (
+        row.type === '購入'
+          ? <span className="font-semibold text-green-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
           : <span className="text-gray-300">—</span>
       ),
     },
@@ -225,7 +274,7 @@ export default function CasesPage() {
         const days = Number(v)
         return (
           <span className={`text-xs font-medium ${days > 30 ? 'text-orange-600 font-bold' : 'text-gray-500'}`}>
-            {days}日{days > 30 ? ' ⚠' : ''}
+            {days > 0 ? `${days}日${days > 30 ? ' ⚠' : ''}` : '—'}
           </span>
         )
       },
@@ -235,7 +284,7 @@ export default function CasesPage() {
       label: '決済日',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
-        <span className="text-xs text-gray-500">{String(v)}</span>
+        <span className="text-xs text-gray-500">{String(v) || '—'}</span>
       ),
     },
     {
@@ -246,6 +295,12 @@ export default function CasesPage() {
       ),
     },
   ]
+
+  // ボード用に price フィールドを付与
+  const boardCases = filtered.map(c => ({
+    ...c,
+    price: c.askingPrice || c.contractPrice || c.budget,
+  }))
 
   return (
     <div className="p-6 max-w-full">
@@ -343,7 +398,7 @@ export default function CasesPage() {
       {view === 'board' ? (
         <PipelineBoard
           stages={boardStages}
-          cases={filtered.map(c => ({ ...c, price: c.price }))}
+          cases={boardCases}
           stageColors={STAGE_COLORS}
         />
       ) : (
