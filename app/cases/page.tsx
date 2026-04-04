@@ -191,10 +191,22 @@ export default function CasesPage() {
     },
     {
       key: 'price' as keyof UnifiedCase,
+      label: '販売価格',
+      sortable: true,
+      render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => (
+        row.type === '売却'
+          ? <span className="font-semibold text-red-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
+          : <span className="text-gray-300">—</span>
+      ),
+    },
+    {
+      key: 'price' as keyof UnifiedCase,
       label: '買付価格',
       sortable: true,
-      render: (v: UnifiedCase[keyof UnifiedCase]) => (
-        <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
+      render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => (
+        row.type === '購入'
+          ? <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
+          : <span className="text-gray-300">—</span>
       ),
     },
     {
