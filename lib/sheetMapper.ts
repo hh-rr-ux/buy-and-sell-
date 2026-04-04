@@ -4,8 +4,13 @@
  * /api/sheets-data が返す Record<string, string>[] を
  * アプリ内型（SellCase / BuyCase）にマッピングする。
  *
- * 列名はシートのヘッダー行をそのまま使うため、
- * 複数の候補名を試して最初にヒットした値を採用する。
+ * 実際のシート列名（sheets-preview で確認済み）:
+ *   【売却】案件管理: 管理No, ステータス, 顧客名, 物件名, 号室, 所在地（市区名）,
+ *                    エリア区分, 担当者, 物件種別, 媒介契約日, 売買契約日, 決済日 など
+ *                    ※ 物件価格列なし → askingPrice は 0
+ *   【購入】案件管理: 管理No, ステータス, 顧客名, 物件名, 所在地（市区名）,
+ *                    売主仲介／担当, エリア区分, 担当者, 物件種別,
+ *                    買付価格, 成約価格, 仲介手数料（税込）など
  */
 
 import {
@@ -37,73 +42,88 @@ function parseNum(s: string): number {
   return Math.floor(parseFloat(clean) || 0)
 }
 
-/** ステージ名の表記ゆれを正規化 */
+/**
+ * ステージ名の正規化。
+ * シートの実際の値（例: "対応終了（他決など）"）をアプリ内ステージ名にマッピング。
+ */
 function normalizeStage(raw: string, validStages: readonly string[]): string {
   if (validStages.includes(raw)) return raw
   const aliases: Record<string, string> = {
-    '問合わせ': '問い合わせ',
-    '問合せ': '問い合わせ',
-    '内覧': '内見',
-    '買付': '購入申し込み',
-    '買付申込': '購入申し込み',
-    '申込': '購入申し込み',
-    'ローン': 'ローン審査',
-    'ローン確認': 'ローン審査',
+    // 表記ゆれ
+    '問合わせ':              '問い合わせ',
+    '問合せ':               '問い合わせ',
+    '内覧':                 '内見',
+    '買付':                 '購入申し込み',
+    '買付申込':             '購入申し込み',
+    '申込':                 '購入申し込み',
+    'ローン':               'ローン審査',
+    'ローン確認':           'ローン審査',
+    // シートの実際のステージ値
+    '対応終了（他決など）': '相談終了',
+    '取扱終了':             '相談終了',
+    '相談終了':             '相談終了',
+    '対応終了':             '相談終了',
+    'キャンセル':           '相談終了',
+    '新規問い合わせ':       '問い合わせ',
+    '面談':                 '査定',
+    '現地調査':             '査定',
   }
   return aliases[raw] || raw
 }
 
 export function mapSellCase(row: SheetRow, idx: number): SellCase {
+  // 売却シートには物件価格列がないため askingPrice = 0
   const priceStr = g(row, '物件価格', '希望価格', '売価', '価格', '販売価格')
   const price    = parseNum(priceStr)
-  const feeStr   = g(row, '仲介手数料', '手数料', '報酬額')
-  const fee      = parseNum(feeStr) || calcBrokerageFee(price)
-  const stageRaw = g(row, '進捗', 'ステージ', 'ステータス', '状況', '進捗状況')
+  const feeStr   = g(row, '仲介手数料（税込）', '仲介手数料', '手数料', '報酬額')
+  const fee      = parseNum(feeStr) || (price > 0 ? calcBrokerageFee(price) : 0)
+  const stageRaw = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
   const stage    = normalizeStage(stageRaw, [...SELL_STAGES, '相談終了']) as SellStage
 
   return {
-    id:                 g(row, 'No', 'ID', '番号', 'No.', '管理番号') || `S${String(idx + 1).padStart(3, '0')}`,
+    id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `S${String(idx + 1).padStart(3, '0')}`,
     clientName:         g(row, '顧客名', 'お客様名', '氏名', '顧客', 'お客様', '売主名'),
     propertyName:       g(row, '物件名', '物件', '名称', '物件名称') || `物件${idx + 1}`,
-    propertyAddress:    g(row, '住所', '物件住所', '所在地', '物件所在地', '所在'),
-    propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ', '物件タイプ'),
-    prefecture:         g(row, '都道府県', '県', '府', '都'),
+    propertyAddress:    g(row, '所在地（市区名）', '住所', '物件住所', '所在地', '物件所在地'),
+    propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ'),
+    prefecture:         g(row, 'エリア区分', '都道府県', '県', '府', '都'),
     askingPrice:        price,
     brokerageFee:       fee,
     stage,
-    staff:              (g(row, '担当', '担当者', '担当スタッフ', '担当名') || '—') as Staff,
-    startDate:          g(row, '開始日', '受付日', '問い合わせ日', '登録日', '初回日'),
-    lastContactDate:    g(row, '最終連絡日', '最終対応日', '最終日', '更新日', '最終連絡'),
+    staff:              (g(row, '担当者', '担当', '担当スタッフ', '担当名') || '—') as Staff,
+    startDate:          g(row, '面談日', '媒介契約日', '開始日', '受付日', '問い合わせ日', '登録日'),
+    lastContactDate:    g(row, '次回報告日', '売買契約日', '決済日', '最終連絡日', '最終対応日'),
     notes:              g(row, 'メモ', '備考', '特記事項', 'コメント', '備考欄'),
-    daysInStage:        parseInt(g(row, '経過日数', '滞在日数', 'ステージ経過')) || 0,
+    daysInStage:        0,
     counterpartyBroker: g(row, '買側業者', '対応業者', '相手業者', '仲介業者', '購入側業者') || '—',
   }
 }
 
 export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
-  const budgetStr = g(row, '予算', '購入予算', '物件価格', '価格', '希望価格')
+  // 購入シート: 買付価格 / 成約価格 → budget, 仲介手数料（税込）→ brokerageFee
+  const budgetStr = g(row, '買付価格', '成約価格', '予算', '購入予算', '物件価格', '価格')
   const budget    = parseNum(budgetStr)
-  const feeStr    = g(row, '仲介手数料', '手数料', '報酬額')
-  const fee       = parseNum(feeStr) || calcBrokerageFee(budget)
-  const stageRaw  = g(row, '進捗', 'ステージ', 'ステータス', '状況', '進捗状況')
+  const feeStr    = g(row, '仲介手数料（税込）', '仲介手数料', '手数料', '報酬額')
+  const fee       = parseNum(feeStr) || (budget > 0 ? calcBrokerageFee(budget) : 0)
+  const stageRaw  = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
   const stage     = normalizeStage(stageRaw, [...BUY_STAGES, '相談終了']) as BuyStage
 
   return {
-    id:                 g(row, 'No', 'ID', '番号', 'No.', '管理番号') || `B${String(idx + 1).padStart(3, '0')}`,
+    id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `B${String(idx + 1).padStart(3, '0')}`,
     clientName:         g(row, '顧客名', 'お客様名', '氏名', '顧客', 'お客様', '買主名'),
     propertyName:       g(row, '物件名', '物件', '名称', '希望物件', '物件名称') || `物件${idx + 1}`,
-    desiredArea:        g(row, '希望エリア', 'エリア', '希望地域', '地域', '希望地区'),
-    propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ', '物件タイプ'),
-    prefecture:         g(row, '都道府県', '県', '府', '都'),
+    desiredArea:        g(row, '所在地（市区名）', '希望エリア', 'エリア区分', '希望地域', '地域'),
+    propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ'),
+    prefecture:         g(row, 'エリア区分', '都道府県', '県', '府', '都'),
     budget,
     brokerageFee:       fee,
     stage,
-    staff:              (g(row, '担当', '担当者', '担当スタッフ', '担当名') || '—') as Staff,
-    startDate:          g(row, '開始日', '受付日', '問い合わせ日', '登録日', '初回日'),
-    lastContactDate:    g(row, '最終連絡日', '最終対応日', '最終日', '更新日', '最終連絡'),
+    staff:              (g(row, '担当者', '担当', '担当スタッフ', '担当名') || '—') as Staff,
+    startDate:          g(row, '面談日', '開始日', '受付日', '問い合わせ日', '登録日'),
+    lastContactDate:    g(row, '決済日', '売買契約', '次回報告日', '最終連絡日', '最終対応日'),
     notes:              g(row, 'メモ', '備考', '特記事項', 'コメント', '備考欄'),
-    daysInStage:        parseInt(g(row, '経過日数', '滞在日数', 'ステージ経過')) || 0,
-    counterpartyBroker: g(row, '売側業者', '対応業者', '相手業者', '仲介業者', '売却側業者') || '—',
+    daysInStage:        0,
+    counterpartyBroker: g(row, '売主仲介／担当', '売側業者', '対応業者', '相手業者', '仲介業者') || '—',
   }
 }
 
