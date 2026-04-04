@@ -59,7 +59,8 @@ export function useSheetData(): SheetData {
   const [data, setData] = useState<SheetData>(cache ?? FALLBACK)
 
   useEffect(() => {
-    if (cache) { setData(cache); return }
+    // loaded=false のキャッシュ（401フォールバック）は再fetchする
+    if (cache && cache.loaded) { setData(cache); return }
 
     fetch('/api/sheets-data')
       .then(r => {
@@ -96,10 +97,8 @@ export function useSheetData(): SheetData {
         setData(result)
       })
       .catch(() => {
-        // 401 / ネットワークエラー → モックのまま loaded=true にする
-        const fallback: SheetData = { ...FALLBACK, loaded: true }
-        cache = fallback
-        setData(fallback)
+        // 401 / ネットワークエラー → モックのまま、ただしキャッシュには入れない（次回再fetchできるように）
+        setData({ ...FALLBACK, loaded: true })
       })
   }, [])
 

@@ -722,12 +722,6 @@ async function handleAPI(request, env, path) {
     catch (e) { return json({ error: e.message }, 500); }
   }
 
-  // スプシデータ（案件管理・問い合わせ数）を返す
-  if (path === '/api/sheets-data' && request.method === 'GET') {
-    try { return json(await fetchSheetsData(env)); }
-    catch (e) { return json({ error: e.message }, 500); }
-  }
-
   return new Response('Not Found', { status: 404 });
 }
 
@@ -810,6 +804,18 @@ export default {
       return new Response(JSON.stringify(data), {
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    // スプシデータ（ログイン済みなら誰でも利用可 — 案件・問い合わせ閲覧）
+    if (path === '/api/sheets-data' && request.method === 'GET') {
+      if (!role) {
+        return new Response(JSON.stringify({ error: 'ログインが必要です' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      try { return json(await fetchSheetsData(env)); }
+      catch (e) { return json({ error: e.message }, 500); }
     }
 
     // API（管理者のみ）
