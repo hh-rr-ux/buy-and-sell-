@@ -475,6 +475,80 @@ async function fetchAllSheets(env) {
   return results;
 }
 
+// ── Google Sheets データ取得（案件管理・問い合わせ数） ────────────────────────
+
+async function fetchSpreadsheetTabs(accessToken, spreadsheetId) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`;
+  const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+  if (!res.ok) throw new Error(`Sheets API エラー ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return (data.sheets || []).map(s => s.properties.title);
+}
+
+// 案件管理: 3行目がヘッダー、4行目以降がデータ
+async function fetchCasesData(accessToken, spreadsheetId) {
+  const values = await fetchSheetValues(accessToken, spreadsheetId, 'A3:Z500');
+  if (values.length < 2) return [];
+  const headers = values[0];
+  return values.slice(1)
+    .filter(row => row.some(cell => cell !== ''))
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { if (h) obj[h] = row[i] ?? ''; });
+      return obj;
+    });
+}
+
+// 問い合わせ数: タブごとに月データ（タブ名 = "26年4月" 形式）
+// 各タブ: A列=カテゴリ名, B列以降=1日~31日の件数
+async function fetchInquiriesData(accessToken, spreadsheetId) {
+  const tabs = await fetchSpreadsheetTabs(accessToken, spreadsheetId);
+  const monthTabs = tabs.filter(t => /^\d{2}年\d{1,2}月$/.test(t));
+
+  const result = {};
+  await Promise.all(monthTabs.map(async tab => {
+    try {
+      const values = await fetchSheetValues(accessToken, spreadsheetId, `${tab}!A:AF`);
+      if (!values.length) return;
+      const parsed = {};
+      values.forEach(row => {
+        const category = (row[0] || '').trim();
+        if (!category) return;
+        const days = row.slice(1).map(v => parseInt(v) || 0);
+        parsed[category] = days;
+      });
+      result[tab] = parsed;
+    } catch {
+      // タブが取得できなくてもスキップ
+    }
+  }));
+
+  return result;
+}
+
+async function fetchSheetsData(env) {
+  const saJson = await getRawValue(env, 'GOOGLE_SERVICE_ACCOUNT_KEY');
+  if (!saJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY が未設定です');
+
+  const token = await getServiceAccountToken(saJson);
+
+  const [sellCasesId, buyCasesId, sellInqId, buyInqId] = await Promise.all([
+    getRawValue(env, 'GOOGLE_SHEETS_SELL_CASES_ID'),
+    getRawValue(env, 'GOOGLE_SHEETS_BUY_CASES_ID'),
+    getRawValue(env, 'GOOGLE_SHEETS_SELL_INQUIRIES_ID'),
+    getRawValue(env, 'GOOGLE_SHEETS_BUY_INQUIRIES_ID'),
+  ]);
+
+  const [sellCases, buyCases, sellInquiries, buyInquiries] = await Promise.all([
+    sellCasesId ? fetchCasesData(token, sellCasesId).catch(e => ({ error: e.message }))    : [],
+    buyCasesId  ? fetchCasesData(token, buyCasesId).catch(e => ({ error: e.message }))     : [],
+    sellInqId   ? fetchInquiriesData(token, sellInqId).catch(e => ({ error: e.message }))  : {},
+    buyInqId    ? fetchInquiriesData(token, buyInqId).catch(e => ({ error: e.message }))   : {},
+  ]);
+
+  return { sellCases, buyCases, sellInquiries, buyInquiries };
+}
+
 // ── Chatwork ルーム情報取得 ───────────────────────────────────────────────────
 const ROOM_TYPES = [
   { envKey: 'CHATWORK_ROOM_OPERATIONS',   type: 'operations'   },
@@ -645,6 +719,12 @@ async function handleAPI(request, env, path) {
   // スプシのヘッダー行＋サンプルデータを返す（列構造確認用）
   if (path === '/api/sheets-preview' && request.method === 'GET') {
     try { return json(await fetchAllSheets(env)); }
+    catch (e) { return json({ error: e.message }, 500); }
+  }
+
+  // スプシデータ（案件管理・問い合わせ数）を返す
+  if (path === '/api/sheets-data' && request.method === 'GET') {
+    try { return json(await fetchSheetsData(env)); }
     catch (e) { return json({ error: e.message }, 500); }
   }
 
