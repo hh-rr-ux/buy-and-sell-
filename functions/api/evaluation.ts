@@ -7,8 +7,13 @@
 
 import { verifyRequest } from '../_lib/jwt'
 
+interface KVNamespace {
+  get(key: string): Promise<string | null>
+}
+
 interface Env {
   JWT_SECRET: string
+  SETTINGS_KV?: KVNamespace
   ANTHROPIC_API_KEY?: string
   CHATWORK_API_TOKEN?: string
   CHATWORK_ROOM_OPERATIONS?: string
@@ -115,7 +120,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     )
   }
 
-  if (!env.CHATWORK_API_TOKEN || !env.CHATWORK_ROOM_OPERATIONS) {
+  const token = (await env.SETTINGS_KV?.get('CHATWORK_API_TOKEN')) ?? env.CHATWORK_API_TOKEN ?? ''
+  const roomId = (await env.SETTINGS_KV?.get('CHATWORK_ROOM_OPERATIONS')) ?? env.CHATWORK_ROOM_OPERATIONS ?? ''
+
+  if (!token || !roomId) {
     return Response.json(
       { error: 'Chatwork の設定が不完全です（CHATWORK_API_TOKEN, CHATWORK_ROOM_OPERATIONS）' },
       { status: 503 },
@@ -123,10 +131,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   try {
-    const messages = await fetchChatworkMessages(
-      env.CHATWORK_API_TOKEN,
-      env.CHATWORK_ROOM_OPERATIONS,
-    )
+    const messages = await fetchChatworkMessages(token, roomId)
 
     if (messages.length === 0) {
       return Response.json({ error: 'チャットにメッセージがありません' }, { status: 422 })

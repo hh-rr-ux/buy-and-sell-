@@ -1,8 +1,9 @@
-export const dynamic = 'force-static'
+'use client'
 
-import { TrendingUp, TrendingDown, MessageCircle, Bell } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { TrendingUp, TrendingDown, MessageCircle, Bell, RefreshCw } from 'lucide-react'
 import {
-  lineInquiries, chatworkRooms,
+  lineInquiries, chatworkRooms as mockChatworkRooms,
 } from '@/lib/mockData'
 
 // デモ用 問い合わせ一覧
@@ -27,6 +28,16 @@ const SOURCE_COLORS: Record<string, string> = {
   'HP': 'bg-blue-500',
 }
 
+interface ChatworkRoom {
+  roomId: string
+  name: string
+  type: string
+  description: string
+  unreadCount: number
+  latestMessage: string
+  latestTime: string
+}
+
 export default function InquiriesPage() {
   const last7 = lineInquiries.slice(-7)
   const thisMonth = lineInquiries.filter(d => d.date.startsWith('2026-03'))
@@ -39,11 +50,36 @@ export default function InquiriesPage() {
     : 0
   const trendUp = trend >= 0
 
+  const unanswered = demoInquiries.filter(i => i.status === '未対応').length
+
+  const [chatworkRooms, setChatworkRooms] = useState<ChatworkRoom[]>(mockChatworkRooms)
+  const [chatworkLoading, setChatworkLoading] = useState(true)
+  const [chatworkError, setChatworkError] = useState('')
+
+  useEffect(() => {
+    async function loadRooms() {
+      setChatworkLoading(true)
+      setChatworkError('')
+      try {
+        const res = await fetch('/api/chatwork-rooms')
+        const data = await res.json() as { rooms?: ChatworkRoom[]; error?: string }
+        if (data.rooms && data.rooms.length > 0) {
+          setChatworkRooms(data.rooms)
+        } else if (data.error) {
+          setChatworkError(data.error)
+        }
+      } catch {
+        setChatworkError('Chatwork データの取得に失敗しました')
+      } finally {
+        setChatworkLoading(false)
+      }
+    }
+    loadRooms()
+  }, [])
+
   const totalUnread = chatworkRooms.reduce((s, r) => s + r.unreadCount, 0)
   const notificationRooms = chatworkRooms.filter(r => r.type === 'notification' || r.type === 'customer')
   const otherRooms = chatworkRooms.filter(r => r.type !== 'notification' && r.type !== 'customer')
-
-  const unanswered = demoInquiries.filter(i => i.status === '未対応').length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -69,7 +105,10 @@ export default function InquiriesPage() {
             </div>
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
               <p className="text-white/50 text-xs mb-1">Chatwork 未読</p>
-              <p className="text-white text-3xl font-black tracking-tight">{totalUnread}<span className="text-lg font-medium text-white/60 ml-1">件</span></p>
+              <p className="text-white text-3xl font-black tracking-tight">
+                {chatworkLoading ? '—' : totalUnread}
+                <span className="text-lg font-medium text-white/60 ml-1">件</span>
+              </p>
               <p className="text-white/40 text-xs mt-2">全ルーム合計</p>
             </div>
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
@@ -168,65 +207,91 @@ export default function InquiriesPage() {
           <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
             <span className="w-1 h-4 rounded-full bg-teal-500 inline-block"/>
             通知チャット（Chatwork）
+            {chatworkLoading && <RefreshCw size={12} className="text-gray-400 animate-spin ml-1" />}
+            {!chatworkLoading && !chatworkError && (
+              <span className="ml-auto text-[10px] text-teal-600 font-semibold bg-teal-50 px-2 py-0.5 rounded-full">
+                リアルタイム
+              </span>
+            )}
+            {!chatworkLoading && chatworkError && (
+              <span className="ml-auto text-[10px] text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded-full">
+                モックデータ
+              </span>
+            )}
           </h2>
 
           {/* 問い合わせ通知系 */}
-          <p className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider mb-2">お客様・通知</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            {notificationRooms.map(room => (
-              <div key={room.roomId} className="rounded-xl border border-teal-200 bg-teal-50 p-4 flex flex-col gap-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-                      <Bell size={14} className="text-teal-600"/>
+          {notificationRooms.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider mb-2">お客様・通知</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {notificationRooms.map(room => (
+                  <div key={room.roomId} className="rounded-xl border border-teal-200 bg-teal-50 p-4 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
+                          <Bell size={14} className="text-teal-600"/>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-teal-800 truncate">{room.name}</p>
+                          <p className="text-gray-400 text-[10px] truncate">{room.description}</p>
+                        </div>
+                      </div>
+                      {room.unreadCount > 0 && (
+                        <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 bg-teal-500">
+                          {room.unreadCount}
+                        </span>
+                      )}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-teal-800 truncate">{room.name}</p>
-                      <p className="text-gray-400 text-[10px] truncate">{room.description}</p>
-                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed bg-white rounded-lg px-3 py-2 border border-gray-100">
+                      {room.latestMessage}
+                    </p>
+                    <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
                   </div>
-                  {room.unreadCount > 0 && (
-                    <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 bg-teal-500">
-                      {room.unreadCount}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed bg-white rounded-lg px-3 py-2 border border-gray-100">
-                  {room.latestMessage}
-                </p>
-                <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
 
           {/* その他チャット */}
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">その他</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {otherRooms.map(room => (
-              <div key={room.roomId} className="rounded-xl border border-gray-100 bg-gray-50 p-4 flex flex-col gap-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
-                      <MessageCircle size={14} className="text-gray-500"/>
+          {otherRooms.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">その他</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {otherRooms.map(room => (
+                  <div key={room.roomId} className="rounded-xl border border-gray-100 bg-gray-50 p-4 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                          <MessageCircle size={14} className="text-gray-500"/>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-700 truncate">{room.name}</p>
+                          <p className="text-gray-400 text-[10px] truncate">{room.description}</p>
+                        </div>
+                      </div>
+                      {room.unreadCount > 0 && (
+                        <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 bg-gray-400">
+                          {room.unreadCount}
+                        </span>
+                      )}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-700 truncate">{room.name}</p>
-                      <p className="text-gray-400 text-[10px] truncate">{room.description}</p>
-                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed bg-white rounded-lg px-3 py-2 border border-gray-100">
+                      {room.latestMessage}
+                    </p>
+                    <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
                   </div>
-                  {room.unreadCount > 0 && (
-                    <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 bg-gray-400">
-                      {room.unreadCount}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed bg-white rounded-lg px-3 py-2 border border-gray-100">
-                  {room.latestMessage}
-                </p>
-                <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
+
+          {/* 全ルーム未取得 */}
+          {!chatworkLoading && chatworkError && (
+            <p className="text-xs text-amber-600 mt-3">
+              ※ {chatworkError}。モックデータを表示しています。
+            </p>
+          )}
         </div>
 
       </div>
