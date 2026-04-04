@@ -18,7 +18,7 @@ import {
   Line,
 } from 'recharts'
 import { BarChart3, TrendingUp, Target, MessageCircle, MapPin } from 'lucide-react'
-import { staffStats, conversionFunnel, lineInquiries, SELL_AREAS, BUY_AREAS, formatPrice } from '@/lib/mockData'
+import { staffStats, conversionFunnel, formatPrice } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f97316', '#eab308', '#22c55e']
@@ -285,68 +285,60 @@ export default function AnalyticsPage() {
 function AreaAnalysisSection() {
   const { sellCases, buyCases } = useSheetData()
 
-  // 売却: エリア別集計
-  const sellAreaData = Object.entries(SELL_AREAS).map(([area, prefs]) => {
-    const cases = sellCases.filter(c => prefs.includes(c.prefecture))
-    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
-    const totalPrice = cases.reduce((s, c) => s + c.askingPrice, 0)
-    const prefBreakdown = prefs.map(pref => ({
-      pref,
-      count: sellCases.filter(c => c.prefecture === pref).length,
-    }))
-    return { area, prefs, count: cases.length, totalFee, totalPrice, prefBreakdown }
-  })
+  // 売却: エリア区分別集計（prefecture フィールドが エリア区分 を保持）
+  const sellAreaMap: Record<string, { count: number; totalFee: number; totalPrice: number }> = {}
+  for (const c of sellCases) {
+    const area = c.prefecture || '不明'
+    if (!sellAreaMap[area]) sellAreaMap[area] = { count: 0, totalFee: 0, totalPrice: 0 }
+    sellAreaMap[area].count++
+    sellAreaMap[area].totalFee += c.brokerageFee
+    sellAreaMap[area].totalPrice += c.askingPrice
+  }
+  const sellAreaData = Object.entries(sellAreaMap)
+    .map(([area, v]) => ({ area, ...v }))
+    .sort((a, b) => b.totalFee - a.totalFee)
 
-  // 購入: エリア別集計
-  const buyAreaData = Object.entries(BUY_AREAS).map(([area, prefs]) => {
-    const cases = buyCases.filter(c => prefs.includes(c.prefecture))
-    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
-    const totalPrice = cases.reduce((s, c) => s + c.budget, 0)
-    const prefBreakdown = prefs.map(pref => ({
-      pref,
-      count: buyCases.filter(c => c.prefecture === pref).length,
-    }))
-    return { area, prefs, count: cases.length, totalFee, totalPrice, prefBreakdown }
-  })
+  // 購入: エリア区分別集計
+  const buyAreaMap: Record<string, { count: number; totalFee: number; totalPrice: number }> = {}
+  for (const c of buyCases) {
+    const area = c.prefecture || '不明'
+    if (!buyAreaMap[area]) buyAreaMap[area] = { count: 0, totalFee: 0, totalPrice: 0 }
+    buyAreaMap[area].count++
+    buyAreaMap[area].totalFee += c.brokerageFee
+    buyAreaMap[area].totalPrice += c.budget
+  }
+  const buyAreaData = Object.entries(buyAreaMap)
+    .map(([area, v]) => ({ area, ...v }))
+    .sort((a, b) => b.totalFee - a.totalFee)
 
-  // 都道府県別テーブル（売却）
-  const sellPrefStats = Array.from(
-    new Set(sellCases.map(c => c.prefecture))
-  ).map(pref => {
-    const cases = sellCases.filter(c => c.prefecture === pref)
-    const totalPrice = cases.reduce((s, c) => s + c.askingPrice, 0)
-    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
-    const avgPrice = cases.length > 0 ? Math.round(totalPrice / cases.length) : 0
-    return { pref, count: cases.length, totalPrice, totalFee, avgPrice }
-  }).sort((a, b) => b.totalFee - a.totalFee)
+  // エリア区分別テーブル（売却）
+  const sellPrefStats = sellAreaData.map(({ area, count, totalPrice, totalFee }) => ({
+    pref: area,
+    count,
+    totalPrice,
+    totalFee,
+    avgPrice: count > 0 ? Math.round(totalPrice / count) : 0,
+  }))
 
-  // 都道府県別テーブル（購入）
-  const buyPrefStats = Array.from(
-    new Set(buyCases.map(c => c.prefecture))
-  ).map(pref => {
-    const cases = buyCases.filter(c => c.prefecture === pref)
-    const totalPrice = cases.reduce((s, c) => s + c.budget, 0)
-    const totalFee = cases.reduce((s, c) => s + c.brokerageFee, 0)
-    const avgPrice = cases.length > 0 ? Math.round(totalPrice / cases.length) : 0
-    return { pref, count: cases.length, totalPrice, totalFee, avgPrice }
-  }).sort((a, b) => b.totalFee - a.totalFee)
+  // エリア区分別テーブル（購入）
+  const buyPrefStats = buyAreaData.map(({ area, count, totalPrice, totalFee }) => ({
+    pref: area,
+    count,
+    totalPrice,
+    totalFee,
+    avgPrice: count > 0 ? Math.round(totalPrice / count) : 0,
+  }))
 
   // エリア別売上チャートデータ（売却+購入合算）
   const allAreas = Array.from(new Set([
-    ...Object.keys(SELL_AREAS),
-    ...Object.keys(BUY_AREAS),
+    ...sellCases.map(c => c.prefecture || '不明'),
+    ...buyCases.map(c => c.prefecture || '不明'),
   ]))
-  const areaChartData = allAreas.map(area => {
-    const sellPrefs = SELL_AREAS[area] ?? []
-    const buyPrefs = BUY_AREAS[area] ?? []
-    const sellFee = sellCases.filter(c => sellPrefs.includes(c.prefecture)).reduce((s, c) => s + c.brokerageFee, 0)
-    const buyFee = buyCases.filter(c => buyPrefs.includes(c.prefecture)).reduce((s, c) => s + c.brokerageFee, 0)
-    return {
-      area,
-      売却手数料: Math.round(sellFee / 10000),
-      購入手数料: Math.round(buyFee / 10000),
-    }
-  })
+  const areaChartData = allAreas.map(area => ({
+    area,
+    売却手数料: Math.round((sellAreaMap[area]?.totalFee ?? 0) / 10000),
+    購入手数料: Math.round((buyAreaMap[area]?.totalFee ?? 0) / 10000),
+  }))
 
   const AREA_COLORS_SELL = ['#ef4444', '#f97316', '#8b5cf6']
   const AREA_COLORS_BUY  = ['#3b82f6', '#06b6d4']
@@ -390,45 +382,23 @@ function AreaAnalysisSection() {
           売却エリア別
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {sellAreaData.map((d, i) => {
-            const maxCount = Math.max(...d.prefBreakdown.map(p => p.count), 1)
-            return (
-              <div key={d.area} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-gray-800 text-base">{d.area}</span>
-                  <span
-                    className="text-white text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: AREA_COLORS_SELL[i] }}
-                  >
-                    {d.count}件
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mb-1">手数料合計</p>
-                <p className="text-lg font-black mb-3" style={{ color: AREA_COLORS_SELL[i] }}>
-                  {formatPrice(d.totalFee)}
-                </p>
-                <p className="text-[10px] text-gray-400 mb-2">対応都道府県: {d.prefs.join('・')}</p>
-                <div className="space-y-1.5">
-                  {d.prefBreakdown.map(pb => (
-                    <div key={pb.pref} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600 w-16 flex-shrink-0">{pb.pref}</span>
-                      <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${(pb.count / maxCount) * 100}%`,
-                            backgroundColor: AREA_COLORS_SELL[i],
-                            minWidth: pb.count > 0 ? '6px' : '0',
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-gray-700 w-6 text-right">{pb.count}</span>
-                    </div>
-                  ))}
-                </div>
+          {sellAreaData.map((d, i) => (
+            <div key={d.area} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-gray-800 text-base">{d.area}</span>
+                <span
+                  className="text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: AREA_COLORS_SELL[i % AREA_COLORS_SELL.length] }}
+                >
+                  {d.count}件
+                </span>
               </div>
-            )
-          })}
+              <p className="text-xs text-gray-500 mb-1">手数料合計</p>
+              <p className="text-lg font-black" style={{ color: AREA_COLORS_SELL[i % AREA_COLORS_SELL.length] }}>
+                {formatPrice(d.totalFee)}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -439,45 +409,23 @@ function AreaAnalysisSection() {
           購入エリア別
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {buyAreaData.map((d, i) => {
-            const maxCount = Math.max(...d.prefBreakdown.map(p => p.count), 1)
-            return (
-              <div key={d.area} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-gray-800 text-base">{d.area}</span>
-                  <span
-                    className="text-white text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: AREA_COLORS_BUY[i] }}
-                  >
-                    {d.count}件
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mb-1">手数料合計</p>
-                <p className="text-lg font-black mb-3" style={{ color: AREA_COLORS_BUY[i] }}>
-                  {formatPrice(d.totalFee)}
-                </p>
-                <p className="text-[10px] text-gray-400 mb-2">対応都道府県: {d.prefs.join('・')}</p>
-                <div className="space-y-1.5">
-                  {d.prefBreakdown.map(pb => (
-                    <div key={pb.pref} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600 w-16 flex-shrink-0">{pb.pref}</span>
-                      <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${(pb.count / maxCount) * 100}%`,
-                            backgroundColor: AREA_COLORS_BUY[i],
-                            minWidth: pb.count > 0 ? '6px' : '0',
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-gray-700 w-6 text-right">{pb.count}</span>
-                    </div>
-                  ))}
-                </div>
+          {buyAreaData.map((d, i) => (
+            <div key={d.area} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-gray-800 text-base">{d.area}</span>
+                <span
+                  className="text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: AREA_COLORS_BUY[i % AREA_COLORS_BUY.length] }}
+                >
+                  {d.count}件
+                </span>
               </div>
-            )
-          })}
+              <p className="text-xs text-gray-500 mb-1">手数料合計</p>
+              <p className="text-lg font-black" style={{ color: AREA_COLORS_BUY[i % AREA_COLORS_BUY.length] }}>
+                {formatPrice(d.totalFee)}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -551,15 +499,12 @@ function AreaAnalysisSection() {
 function LineAnalysisSection() {
   const { monthlyStats } = useSheetData()
 
-  // 月別集計（仮値 ※スプシ連携後に実データへ置換）
-  const monthlyLine = [
-    { month: '10月', count: 38, converted: 3 },
-    { month: '11月', count: 42, converted: 4 },
-    { month: '12月', count: 35, converted: 5 },
-    { month: '1月',  count: 51, converted: 4 },
-    { month: '2月',  count: 47, converted: 4 },
-    { month: '3月',  count: 58, converted: 5 },
-  ]
+  // スプシ実データから月別集計
+  const monthlyLine = monthlyStats.map(m => ({
+    month: m.month.replace('202', '').replace('年', '/').replace('月', '月'),
+    count: m.newInquiries,
+    converted: m.closedSell + m.closedBuy,
+  }))
 
   // 曜日別（仮値）
   const weekdayData = [
@@ -582,13 +527,13 @@ function LineAnalysisSection() {
     { hour: '21時〜',  count: 19 },
   ]
 
-  const thisMonth   = lineInquiries.filter(d => d.date.startsWith('2026-03'))
-  const lastMonth   = lineInquiries.filter(d => d.date.startsWith('2026-02'))
-  const thisTotal   = thisMonth.reduce((s, d) => s + d.count, 0)
-  const lastTotal   = lastMonth.reduce((s, d) => s + d.count, 0)
+  const currentMonthStats = monthlyStats[monthlyStats.length - 1]
+  const prevMonthStats    = monthlyStats[monthlyStats.length - 2]
+  const thisTotal   = currentMonthStats?.newInquiries ?? 0
+  const lastTotal   = prevMonthStats?.newInquiries ?? 0
   const trend       = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : 0
-  const avgPerDay   = (thisTotal / thisMonth.length).toFixed(1)
-  const totalClosed = monthlyStats[monthlyStats.length - 1].closedSell + monthlyStats[monthlyStats.length - 1].closedBuy
+  const avgPerDay   = thisTotal > 0 ? (thisTotal / 30).toFixed(1) : '0'
+  const totalClosed = (currentMonthStats?.closedSell ?? 0) + (currentMonthStats?.closedBuy ?? 0)
   const convRate    = thisTotal > 0 ? ((totalClosed / thisTotal) * 100).toFixed(1) : '0'
 
   const maxWeekday  = Math.max(...weekdayData.map(d => d.count))

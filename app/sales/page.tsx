@@ -6,7 +6,6 @@ import { TrendingUp, TrendingDown, Banknote, Users, MapPin } from 'lucide-react'
 import {
   staffStats,
   calcBrokerageFee, formatPrice,
-  SELL_AREAS, BUY_AREAS,
 } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
 
@@ -28,17 +27,23 @@ export default function SalesPage() {
   const closedSell = sellCases.filter(c => c.stage === '決済')
   const closedBuy = buyCases.filter(c => c.stage === '決済')
 
-  const sellAreaRevenue = Object.entries(SELL_AREAS).map(([area, prefs]) => {
-    const cases = closedSell.filter(c => prefs.includes(c.prefecture))
-    const revenue = cases.reduce((s, c) => s + calcBrokerageFee(c.askingPrice), 0)
-    return { area, count: cases.length, revenue }
-  })
+  const sellAreaMap: Record<string, { count: number; revenue: number }> = {}
+  for (const c of closedSell) {
+    const area = c.prefecture || '不明'
+    if (!sellAreaMap[area]) sellAreaMap[area] = { count: 0, revenue: 0 }
+    sellAreaMap[area].count++
+    sellAreaMap[area].revenue += calcBrokerageFee(c.askingPrice)
+  }
+  const sellAreaRevenue = Object.entries(sellAreaMap).map(([area, v]) => ({ area, ...v })).sort((a, b) => b.revenue - a.revenue)
 
-  const buyAreaRevenue = Object.entries(BUY_AREAS).map(([area, prefs]) => {
-    const cases = closedBuy.filter(c => prefs.includes(c.prefecture))
-    const revenue = cases.reduce((s, c) => s + calcBrokerageFee(c.budget), 0)
-    return { area, count: cases.length, revenue }
-  })
+  const buyAreaMap: Record<string, { count: number; revenue: number }> = {}
+  for (const c of closedBuy) {
+    const area = c.prefecture || '不明'
+    if (!buyAreaMap[area]) buyAreaMap[area] = { count: 0, revenue: 0 }
+    buyAreaMap[area].count++
+    buyAreaMap[area].revenue += calcBrokerageFee(c.budget)
+  }
+  const buyAreaRevenue = Object.entries(buyAreaMap).map(([area, v]) => ({ area, ...v })).sort((a, b) => b.revenue - a.revenue)
 
   // 都道府県別 成約件数
   const allClosed = [

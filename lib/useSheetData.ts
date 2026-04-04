@@ -20,20 +20,22 @@ import {
 import { mapSellCase, mapBuyCase, mapInquiryStats } from './sheetMapper'
 
 export interface SheetData {
-  sellCases:    SellCase[]
-  buyCases:     BuyCase[]
-  monthlyStats: MonthlyStats[]
-  loaded:       boolean
+  sellCases:      SellCase[]
+  buyCases:       BuyCase[]
+  monthlyStats:   MonthlyStats[]
+  inquirySummary: Record<string, { newInquiries: number; closedSell: number; closedBuy: number }>
+  loaded:         boolean
 }
 
 // ページ間でキャッシュ（SPA遷移で再fetchしない）
 let cache: SheetData | null = null
 
 const FALLBACK: SheetData = {
-  sellCases:    mockSellCases,
-  buyCases:     mockBuyCases,
-  monthlyStats: mockMonthlyStats,
-  loaded:       false,
+  sellCases:      mockSellCases,
+  buyCases:       mockBuyCases,
+  monthlyStats:   mockMonthlyStats,
+  inquirySummary: {},
+  loaded:         false,
 }
 
 /** モック monthlyStats に実際の問い合わせ数をマージする */
@@ -84,10 +86,11 @@ export function useSheetData(): SheetData {
         )
 
         const result: SheetData = {
-          sellCases:    sells,
-          buyCases:     buys,
-          monthlyStats: mergeInquiries(mockMonthlyStats, inqMap),
-          loaded:       true,
+          sellCases:      sells,
+          buyCases:       buys,
+          monthlyStats:   mergeInquiries(mockMonthlyStats, inqMap),
+          inquirySummary: inqMap,
+          loaded:         true,
         }
         cache = result
         setData(result)

@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { TrendingUp, TrendingDown, MessageCircle, Bell, RefreshCw } from 'lucide-react'
-import {
-  lineInquiries, chatworkRooms as mockChatworkRooms,
-} from '@/lib/mockData'
+import { chatworkRooms as mockChatworkRooms } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 
 // デモ用 問い合わせ一覧
 const demoInquiries = [
@@ -39,12 +38,26 @@ interface ChatworkRoom {
 }
 
 export default function InquiriesPage() {
-  const last7 = lineInquiries.slice(-7)
-  const thisMonth = lineInquiries.filter(d => d.date.startsWith('2026-03'))
-  const lastMonth = lineInquiries.filter(d => d.date.startsWith('2026-02'))
-  const thisMonthTotal = thisMonth.reduce((s, d) => s + d.count, 0)
-  const lastMonthTotal = lastMonth.reduce((s, d) => s + d.count, 0)
-  const maxCount = Math.max(...last7.map(d => d.count), 1)
+  const { inquirySummary, loaded } = useSheetData()
+
+  // 月別問い合わせ数（シート実データ）を新しい月順にソート
+  const monthlyInquiries = useMemo(() => {
+    return Object.entries(inquirySummary)
+      .map(([month, d]) => ({ month, ...d }))
+      .sort((a, b) => a.month.localeCompare(b.month))
+  }, [inquirySummary])
+
+  // 直近2ヶ月を今月・先月として扱う
+  const recentMonths = monthlyInquiries.slice(-2)
+  const thisMonthData = recentMonths[recentMonths.length - 1]
+  const lastMonthData = recentMonths[recentMonths.length - 2]
+  const thisMonthTotal = thisMonthData?.newInquiries ?? 0
+  const lastMonthTotal = lastMonthData?.newInquiries ?? 0
+
+  // データがなければグラフ用に過去6ヶ月分を表示
+  const chartData = monthlyInquiries.slice(-6)
+  const maxCount = Math.max(...chartData.map(d => d.newInquiries), 1)
+
   const trend = lastMonthTotal > 0
     ? Math.round(((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100)
     : 0
@@ -92,7 +105,7 @@ export default function InquiriesPage() {
               <p className="text-white/50 text-xs font-medium uppercase tracking-widest mb-0.5">お問合せ管理</p>
               <h1 className="text-white text-xl font-bold">問合せ・チャット概況</h1>
             </div>
-            <span className="text-white/40 text-xs">最終更新: 2026-03-31</span>
+            <span className="text-white/40 text-xs">{loaded ? `最終月: ${thisMonthData?.month ?? '—'}` : '読み込み中...'}</span>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
@@ -167,11 +180,11 @@ export default function InquiriesPage() {
           </div>
         </div>
 
-        {/* LINE問い合わせ推移 */}
+        {/* 問い合わせ数推移 */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
             <span className="w-1 h-4 rounded-full bg-green-500 inline-block"/>
-            LINE問い合わせ推移（直近7日）
+            新規問い合わせ推移（月別・スプシ実データ）
             <span className={`ml-auto flex items-center gap-1 text-xs font-semibold ${trendUp ? 'text-green-600' : 'text-red-500'}`}>
               {trendUp ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
               今月 {trendUp ? '+' : ''}{trend}%（先月比）
@@ -179,27 +192,31 @@ export default function InquiriesPage() {
           </h2>
           <div className="flex gap-3 mb-5">
             <div className="flex-1 rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-center">
-              <p className="text-[10px] text-green-600 font-semibold mb-0.5">今月合計</p>
+              <p className="text-[10px] text-green-600 font-semibold mb-0.5">今月合計（{thisMonthData?.month ?? '—'}）</p>
               <p className="text-2xl font-black text-green-700">{thisMonthTotal}<span className="text-sm font-normal ml-0.5">件</span></p>
             </div>
             <div className="flex-1 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-center">
-              <p className="text-[10px] text-gray-500 font-semibold mb-0.5">先月合計</p>
+              <p className="text-[10px] text-gray-500 font-semibold mb-0.5">先月合計（{lastMonthData?.month ?? '—'}）</p>
               <p className="text-2xl font-black text-gray-600">{lastMonthTotal}<span className="text-sm font-normal ml-0.5">件</span></p>
             </div>
           </div>
-          <div className="flex items-end gap-2 h-24">
-            {last7.map((d) => {
-              const heightPct = (d.count / maxCount) * 100
-              const dayLabel = d.date.slice(5).replace('-', '/')
-              return (
-                <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-bold text-green-600">{d.count}</span>
-                  <div className="w-full rounded-t-md bg-green-400" style={{ height: `${heightPct}%`, minHeight: '4px' }}/>
-                  <span className="text-gray-400 text-[9px]">{dayLabel}</span>
-                </div>
-              )
-            })}
-          </div>
+          {chartData.length > 0 ? (
+            <div className="flex items-end gap-2 h-24">
+              {chartData.map((d) => {
+                const heightPct = (d.newInquiries / maxCount) * 100
+                const label = d.month.replace('2026年', '').replace('2025年', '')
+                return (
+                  <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-[10px] font-bold text-green-600">{d.newInquiries}</span>
+                    <div className="w-full rounded-t-md bg-green-400" style={{ height: `${heightPct}%`, minHeight: '4px' }}/>
+                    <span className="text-gray-400 text-[9px]">{label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm text-center py-4">データ読み込み中...</p>
+          )}
         </div>
 
         {/* Chatwork チャット状況 */}

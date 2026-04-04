@@ -217,7 +217,7 @@ export default function BuyPage() {
             className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
           >
             <option value="すべて">すべて</option>
-            {['鈴木', '田中', '佐藤', '山田', '伊藤'].map((s) => <option key={s} value={s}>{s}</option>)}
+            {Array.from(new Set(buyCases.map(c => c.staff as string).filter(s => s && s !== '—'))).sort().map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <span className="text-xs text-gray-400 ml-auto">{filtered.length}件表示中</span>
