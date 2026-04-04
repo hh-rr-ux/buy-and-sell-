@@ -29,7 +29,7 @@ export interface SheetData {
   loaded:         boolean
 }
 
-const SESSION_KEY = 'bns_sheet_data_v2'
+const SESSION_KEY = 'bns_sheet_data_v3'
 
 // ページ間キャッシュ（SPA遷移で再fetchしない）
 let cache: SheetData | null = null
@@ -88,17 +88,13 @@ export function useSheetData(): SheetData {
   })
 
   useEffect(() => {
-    // モジュールキャッシュが有効なら再fetchしない
-    if (cache && cache.loaded) { setData(cache); return }
-
-    // sessionStorage に有効データがあれば即時表示しつつ、バックグラウンドでも更新
+    // sessionStorage に有効データがあれば即時表示（ちらつき防止）
     const sessionData = loadFromSession()
-    if (sessionData) {
-      cache = sessionData
+    if (sessionData && !cache) {
       setData(sessionData)
-      // sessionStorage があっても最新データをバックグラウンドでfetchして更新
     }
 
+    // 常にAPIから最新データをfetch
     fetch('/api/sheets-data')
       .then(r => {
         if (!r.ok) throw new Error(`${r.status}`)
