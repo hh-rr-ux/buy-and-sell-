@@ -3,11 +3,13 @@
 /**
  * useSheetData
  *
- * /api/sheets-data（管理者セッション必須）からスプシデータを取得し、
+ * /api/sheets-data からスプシデータを取得し、
  * SellCase[] / BuyCase[] にマッピングして返す。
  *
- * - セッション内でキャッシュ（1回だけfetch）
- * - 401 / エラー時はモックデータにフォールバック
+ * キャッシュ優先度:
+ *   1. モジュールキャッシュ（SPA遷移で再fetchしない）
+ *   2. sessionStorage（リロード後も即時表示）
+ *   3. フォールバック表示しつつバックグラウンドでfetch
  */
 
 import { useState, useEffect } from 'react'
@@ -27,7 +29,9 @@ export interface SheetData {
   loaded:         boolean
 }
 
-// ページ間でキャッシュ（SPA遷移で再fetchしない）
+const SESSION_KEY = 'bns_sheet_data_v2'
+
+// ページ間キャッシュ（SPA遷移で再fetchしない）
 let cache: SheetData | null = null
 
 const FALLBACK: SheetData = {
@@ -36,6 +40,28 @@ const FALLBACK: SheetData = {
   monthlyStats:   mockMonthlyStats,
   inquirySummary: {},
   loaded:         false,
+}
+
+function loadFromSession(): SheetData | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SheetData
+    return parsed.loaded ? parsed : null
+  } catch { return null }
+}
+
+function saveToSession(data: SheetData) {
+  if (typeof window === 'undefined') return
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(data)) } catch {}
+}
+
+export function clearSheetCache() {
+  cache = null
+  if (typeof window !== 'undefined') {
+    try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+  }
 }
 
 /** モック monthlyStats に実際の問い合わせ数をマージする */
@@ -56,11 +82,22 @@ function mergeInquiries(
 }
 
 export function useSheetData(): SheetData {
-  const [data, setData] = useState<SheetData>(cache ?? FALLBACK)
+  // モジュールキャッシュ → sessionStorage → FALLBACK の順で初期値を決定
+  const [data, setData] = useState<SheetData>(() => {
+    return cache ?? loadFromSession() ?? FALLBACK
+  })
 
   useEffect(() => {
-    // loaded=false のキャッシュ（401フォールバック）は再fetchする
+    // モジュールキャッシュが有効なら再fetchしない
     if (cache && cache.loaded) { setData(cache); return }
+
+    // sessionStorage に有効データがあれば即時表示しつつ、バックグラウンドでも更新
+    const sessionData = loadFromSession()
+    if (sessionData) {
+      cache = sessionData
+      setData(sessionData)
+      // sessionStorage があっても最新データをバックグラウンドでfetchして更新
+    }
 
     fetch('/api/sheets-data')
       .then(r => {
@@ -94,10 +131,12 @@ export function useSheetData(): SheetData {
           loaded:         true,
         }
         cache = result
+        saveToSession(result)
         setData(result)
       })
       .catch(() => {
-        // 401 / ネットワークエラー → モックのまま、ただしキャッシュには入れない（次回再fetchできるように）
+        // 401 / エラー → sessionStorage をクリアして次回再fetchできるようにする
+        clearSheetCache()
         setData({ ...FALLBACK, loaded: true })
       })
   }, [])
