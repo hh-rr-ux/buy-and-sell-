@@ -685,13 +685,15 @@ async function syncChatwork(env) {
   return { ok: true, syncedAt: new Date().toISOString(), summary };
 }
 
+// ── JSON レスポンスヘルパー（全スコープで使用）─────────────────────────────────
+const json = (data, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 // ── API ルーティング ──────────────────────────────────────────────────────────
 async function handleAPI(request, env, path) {
-  const json = (data, status = 200) =>
-    new Response(JSON.stringify(data), {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    });
 
   if (path === '/api/evaluation' && request.method === 'GET') {
     try { return json(await generateEvaluation(env)); }
