@@ -241,10 +241,15 @@ const SETTINGS_KEYS = [
   { key: 'CHATWORK_ROOM_RECRUITMENT',  label: '求人チャット ルームID',          sensitive: false, group: 'chatwork' },
   { key: 'CHATWORK_ROOM_NOTIFICATION', label: '通知チャット ルームID',          sensitive: false, group: 'chatwork' },
   { key: 'CHATWORK_ROOM_CUSTOMER',     label: 'メッセージチャット ルームID',    sensitive: false, group: 'chatwork' },
-  { key: 'GOOGLE_SHEETS_API_KEY',      label: 'Google Sheets APIキー',         sensitive: true,  group: 'sheets' },
-  { key: 'GOOGLE_SHEETS_ID',           label: 'スプレッドシートID',             sensitive: false, group: 'sheets' },
-  { key: 'GOOGLE_SHEETS_CASES_RANGE',  label: '案件管理 範囲',                 sensitive: false, group: 'sheets' },
-  { key: 'GOOGLE_SHEETS_LINE_RANGE',   label: 'LINE問い合わせ 範囲',           sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SERVICE_ACCOUNT_KEY',        label: 'サービスアカウントJSON',               sensitive: true,  group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_SELL_CASES_ID',       label: '【売却】案件管理 スプシID',             sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_SELL_CASES_RANGE',    label: '【売却】案件管理 範囲（例: シート1!A:Z）', sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_BUY_CASES_ID',        label: '【購入】案件管理 スプシID',             sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_BUY_CASES_RANGE',     label: '【購入】案件管理 範囲',                 sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_SELL_INQUIRIES_ID',   label: '【売却】問い合わせ数 スプシID',         sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_SELL_INQUIRIES_RANGE',label: '【売却】問い合わせ数 範囲',             sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_BUY_INQUIRIES_ID',    label: '【購入】問い合わせ数 スプシID',         sensitive: false, group: 'sheets' },
+  { key: 'GOOGLE_SHEETS_BUY_INQUIRIES_RANGE', label: '【購入】問い合わせ数 範囲',             sensitive: false, group: 'sheets' },
   { key: 'ANTHROPIC_API_KEY',          label: 'Anthropic APIキー',             sensitive: true,  group: 'ai' },
 ];
 
@@ -376,6 +381,98 @@ JSONのみ返答してください。`;
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('AI レスポンスのパースに失敗しました');
   return JSON.parse(jsonMatch[0]);
+}
+
+// ── Google Sheets（サービスアカウント認証） ───────────────────────────────────
+
+function pemToDer(pem) {
+  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function b64urlEncode(buf) {
+  const bytes = new Uint8Array(buf instanceof ArrayBuffer ? buf : buf.buffer);
+  let str = '';
+  bytes.forEach(b => str += String.fromCharCode(b));
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+async function getServiceAccountToken(serviceAccountJson) {
+  const sa = JSON.parse(serviceAccountJson);
+  const now = Math.floor(Date.now() / 1000);
+  const enc = new TextEncoder();
+
+  const header  = b64urlEncode(enc.encode(JSON.stringify({ alg: 'RS256', typ: 'JWT' })));
+  const payload = b64urlEncode(enc.encode(JSON.stringify({
+    iss:   sa.client_email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+    aud:   'https://oauth2.googleapis.com/token',
+    exp:   now + 3600,
+    iat:   now,
+  })));
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8', pemToDer(sa.private_key),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5', key,
+    enc.encode(`${header}.${payload}`),
+  );
+
+  const jwt = `${header}.${payload}.${b64urlEncode(sig)}`;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error(`トークン取得失敗: ${JSON.stringify(data)}`);
+  return data.access_token;
+}
+
+async function fetchSheetValues(accessToken, spreadsheetId, range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
+  const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Sheets API エラー ${res.status}: ${err}`);
+  }
+  const data = await res.json();
+  return data.values || [];
+}
+
+async function fetchAllSheets(env) {
+  const saJson = await getRawValue(env, 'GOOGLE_SERVICE_ACCOUNT_KEY');
+  if (!saJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY が未設定です');
+
+  const token = await getServiceAccountToken(saJson);
+
+  const sheetDefs = [
+    { idKey: 'GOOGLE_SHEETS_SELL_CASES_ID',       rangeKey: 'GOOGLE_SHEETS_SELL_CASES_RANGE',       label: '【売却】案件管理' },
+    { idKey: 'GOOGLE_SHEETS_BUY_CASES_ID',        rangeKey: 'GOOGLE_SHEETS_BUY_CASES_RANGE',        label: '【購入】案件管理' },
+    { idKey: 'GOOGLE_SHEETS_SELL_INQUIRIES_ID',   rangeKey: 'GOOGLE_SHEETS_SELL_INQUIRIES_RANGE',   label: '【売却】問い合わせ数' },
+    { idKey: 'GOOGLE_SHEETS_BUY_INQUIRIES_ID',    rangeKey: 'GOOGLE_SHEETS_BUY_INQUIRIES_RANGE',    label: '【購入】問い合わせ数' },
+  ];
+
+  const results = {};
+  await Promise.all(sheetDefs.map(async def => {
+    const id    = await getRawValue(env, def.idKey);
+    const range = await getRawValue(env, def.rangeKey) || 'A:Z';
+    if (!id) { results[def.label] = { error: 'スプシID未設定' }; return; }
+    try {
+      const values = await fetchSheetValues(token, id, range);
+      results[def.label] = { rows: values.length, headers: values[0] || [], sample: values.slice(1, 4) };
+    } catch (e) {
+      results[def.label] = { error: e.message };
+    }
+  }));
+
+  return results;
 }
 
 // ── Chatwork ルーム情報取得 ───────────────────────────────────────────────────
@@ -542,6 +639,12 @@ async function handleAPI(request, env, path) {
 
   if (path === '/api/chatwork-rooms' && request.method === 'GET') {
     try { return json(await getChatworkRooms(env)); }
+    catch (e) { return json({ error: e.message }, 500); }
+  }
+
+  // スプシのヘッダー行＋サンプルデータを返す（列構造確認用）
+  if (path === '/api/sheets-preview' && request.method === 'GET') {
+    try { return json(await fetchAllSheets(env)); }
     catch (e) { return json({ error: e.message }, 500); }
   }
 
