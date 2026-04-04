@@ -74,21 +74,21 @@ export default function BuyPage() {
     },
     {
       key: 'desiredArea' as keyof BuyCase,
-      label: '希望エリア',
+      label: '所在地（市区名）',
       render: (v: BuyCase[keyof BuyCase]) => (
         <span className="text-gray-600 text-xs">{String(v)}</span>
       ),
     },
     {
       key: 'propertyType' as keyof BuyCase,
-      label: '種別',
+      label: '物件種別',
       render: (v: BuyCase[keyof BuyCase]) => (
         <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{String(v)}</span>
       ),
     },
     {
       key: 'budget' as keyof BuyCase,
-      label: '予算',
+      label: '買付価格',
       sortable: true,
       render: (v: BuyCase[keyof BuyCase]) => (
         <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
@@ -96,13 +96,13 @@ export default function BuyPage() {
     },
     {
       key: 'stage' as keyof BuyCase,
-      label: 'ステージ',
+      label: 'ステータス',
       sortable: true,
       render: (v: BuyCase[keyof BuyCase]) => <StageBadge stage={String(v)} />,
     },
     {
       key: 'staff' as keyof BuyCase,
-      label: '担当',
+      label: '担当者',
       render: (v: BuyCase[keyof BuyCase]) => (
         <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">{String(v)}</span>
       ),

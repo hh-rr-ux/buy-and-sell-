@@ -74,35 +74,27 @@ export default function SellPage() {
     },
     {
       key: 'propertyAddress' as keyof SellCase,
-      label: '物件住所',
+      label: '所在地（市区名）',
       render: (v: SellCase[keyof SellCase]) => (
         <span className="text-gray-600 text-xs">{String(v)}</span>
       ),
     },
     {
       key: 'propertyType' as keyof SellCase,
-      label: '種別',
+      label: '物件種別',
       render: (v: SellCase[keyof SellCase]) => (
         <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{String(v)}</span>
       ),
     },
     {
-      key: 'askingPrice' as keyof SellCase,
-      label: '希望価格',
-      sortable: true,
-      render: (v: SellCase[keyof SellCase]) => (
-        <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
-      ),
-    },
-    {
       key: 'stage' as keyof SellCase,
-      label: 'ステージ',
+      label: 'ステータス',
       sortable: true,
       render: (v: SellCase[keyof SellCase]) => <StageBadge stage={String(v)} />,
     },
     {
       key: 'staff' as keyof SellCase,
-      label: '担当',
+      label: '担当者',
       render: (v: SellCase[keyof SellCase]) => (
         <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">{String(v)}</span>
       ),
