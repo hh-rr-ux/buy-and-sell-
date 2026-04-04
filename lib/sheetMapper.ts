@@ -31,6 +31,17 @@ function g(row: SheetRow, ...keys: string[]): string {
   return ''
 }
 
+/** 日付文字列から経過日数を計算 */
+function daysFromDate(s: string): number {
+  if (!s) return 0
+  // "2025/04/01", "2025-04-01", "2025年4月1日" 等に対応
+  const clean = s.replace(/年/g, '/').replace(/月/g, '/').replace(/日/g, '').trim()
+  const d = new Date(clean)
+  if (isNaN(d.getTime())) return 0
+  const now = new Date()
+  return Math.max(0, Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)))
+}
+
 /** 数値文字列をパース（万円・億円表記も対応） */
 function parseNum(s: string): number {
   if (!s) return 0
@@ -49,24 +60,66 @@ function parseNum(s: string): number {
 function normalizeStage(raw: string, validStages: readonly string[]): string {
   if (validStages.includes(raw)) return raw
   const aliases: Record<string, string> = {
-    // 表記ゆれ
+    // 表記ゆれ — 問い合わせ系
     '問合わせ':              '問い合わせ',
     '問合せ':               '問い合わせ',
+    '新規問い合わせ':       '問い合わせ',
+    '新規問合せ':           '問い合わせ',
+    '新規':                 '問い合わせ',
+    '相談':                 '問い合わせ',
+    '相談中':               '問い合わせ',
+    // 査定系
+    '面談':                 '査定',
+    '現地調査':             '査定',
+    '訪問査定':             '査定',
+    '机上査定':             '査定',
+    '査定中':               '査定',
+    // 媒介系
+    '媒介':                 '媒介契約',
+    '専任媒介':             '媒介契約',
+    '一般媒介':             '媒介契約',
+    '専属専任':             '媒介契約',
+    // 販売活動系
+    '販売中':               '販売活動',
+    '広告中':               '販売活動',
+    '募集中':               '販売活動',
+    // 内見系
     '内覧':                 '内見',
+    '内見中':               '内見',
+    '物件紹介':             '内見',
+    '物件案内':             '内見',
+    // 購入申し込み系
     '買付':                 '購入申し込み',
     '買付申込':             '購入申し込み',
     '申込':                 '購入申し込み',
+    '購入申込':             '購入申し込み',
+    '買付証明':             '購入申し込み',
+    // 売買契約系
+    '契約':                 '売買契約',
+    '契約済':               '売買契約',
+    '契約済み':             '売買契約',
+    // ローン系
     'ローン':               'ローン審査',
     'ローン確認':           'ローン審査',
-    // シートの実際のステージ値
+    'ローン審査中':         'ローン審査',
+    '融資審査':             'ローン審査',
+    // 決済系
+    '決済済':               '決済',
+    '決済済み':             '決済',
+    '引渡':                 '決済',
+    '引渡し':               '決済',
+    '引き渡し':             '決済',
+    '完了':                 '決済',
+    // 終了系
     '対応終了（他決など）': '相談終了',
     '取扱終了':             '相談終了',
     '相談終了':             '相談終了',
     '対応終了':             '相談終了',
     'キャンセル':           '相談終了',
-    '新規問い合わせ':       '問い合わせ',
-    '面談':                 '査定',
-    '現地調査':             '査定',
+    '取下':                 '相談終了',
+    '取下げ':               '相談終了',
+    '中止':                 '相談終了',
+    '他決':                 '相談終了',
   }
   return aliases[raw] || raw
 }
@@ -79,6 +132,7 @@ export function mapSellCase(row: SheetRow, idx: number): SellCase {
   const fee      = parseNum(feeStr) || (price > 0 ? calcBrokerageFee(price) : 0)
   const stageRaw = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
   const stage    = normalizeStage(stageRaw, [...SELL_STAGES, '相談終了']) as SellStage
+  const startDate = g(row, '面談日', '媒介契約日', '開始日', '受付日', '問い合わせ日', '登録日')
 
   return {
     id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `S${String(idx + 1).padStart(3, '0')}`,
@@ -91,10 +145,10 @@ export function mapSellCase(row: SheetRow, idx: number): SellCase {
     brokerageFee:       fee,
     stage,
     staff:              (g(row, '担当者', '担当', '担当スタッフ', '担当名') || '—') as Staff,
-    startDate:          g(row, '面談日', '媒介契約日', '開始日', '受付日', '問い合わせ日', '登録日'),
+    startDate,
     lastContactDate:    g(row, '次回報告日', '売買契約日', '決済日', '最終連絡日', '最終対応日'),
     notes:              g(row, 'メモ', '備考', '特記事項', 'コメント', '備考欄'),
-    daysInStage:        0,
+    daysInStage:        daysFromDate(startDate),
     counterpartyBroker: g(row, '買側業者', '対応業者', '相手業者', '仲介業者', '購入側業者') || '—',
   }
 }
@@ -107,6 +161,7 @@ export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
   const fee       = parseNum(feeStr) || (budget > 0 ? calcBrokerageFee(budget) : 0)
   const stageRaw  = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
   const stage     = normalizeStage(stageRaw, [...BUY_STAGES, '相談終了']) as BuyStage
+  const startDate = g(row, '面談日', '開始日', '受付日', '問い合わせ日', '登録日')
 
   return {
     id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `B${String(idx + 1).padStart(3, '0')}`,
@@ -119,10 +174,10 @@ export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
     brokerageFee:       fee,
     stage,
     staff:              (g(row, '担当者', '担当', '担当スタッフ', '担当名') || '—') as Staff,
-    startDate:          g(row, '面談日', '開始日', '受付日', '問い合わせ日', '登録日'),
+    startDate,
     lastContactDate:    g(row, '決済日', '売買契約', '次回報告日', '最終連絡日', '最終対応日'),
     notes:              g(row, 'メモ', '備考', '特記事項', 'コメント', '備考欄'),
-    daysInStage:        0,
+    daysInStage:        daysFromDate(startDate),
     counterpartyBroker: g(row, '売主仲介／担当', '売側業者', '対応業者', '相手業者', '仲介業者') || '—',
   }
 }

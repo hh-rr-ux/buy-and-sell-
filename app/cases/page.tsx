@@ -23,12 +23,14 @@ const STAGE_COLORS: Record<string, string> = {
   '売買契約':     '#eab308',
   'ローン審査':   '#ec4899',
   '決済':         '#22c55e',
+  '相談終了':     '#9ca3af',
 }
 
-// 全ステージ（売却→購入の順で重複排除）
+// 全ステージ（売却→購入の順で重複排除 + 相談終了）
 const ALL_STAGES = [
   ...SELL_STAGES,
   ...BUY_STAGES.filter(s => !SELL_STAGES.includes(s as typeof SELL_STAGES[number])),
+  '相談終了',
 ]
 
 type TypeFilter = 'すべて' | '売却' | '購入'
@@ -105,10 +107,10 @@ export default function CasesPage() {
     return true
   })
 
-  // ボード表示用のステージ一覧（フィルタに応じて切替）
+  // ボード表示用のステージ一覧（フィルタに応じて切替、相談終了も含む）
   const boardStages =
-    typeFilter === '売却' ? SELL_STAGES :
-    typeFilter === '購入' ? BUY_STAGES :
+    typeFilter === '売却' ? [...SELL_STAGES, '相談終了'] :
+    typeFilter === '購入' ? [...BUY_STAGES, '相談終了'] :
     ALL_STAGES
 
   const stageStats = boardStages.map(s => ({

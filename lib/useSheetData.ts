@@ -105,18 +105,31 @@ export function useSheetData(): SheetData {
         return r.json()
       })
       .then((json: {
-        sellCases:     Record<string, string>[]
-        buyCases:      Record<string, string>[]
+        sellCases:     Record<string, string>[] | { error: string }
+        buyCases:      Record<string, string>[] | { error: string }
         sellInquiries: Record<string, Record<string, number[]>>
         buyInquiries:  Record<string, Record<string, number[]>>
       }) => {
-        const sells = Array.isArray(json.sellCases) && json.sellCases.length > 0
-          ? json.sellCases.map((r, i) => mapSellCase(r, i))
+        // エラーオブジェクトが返った場合はログ出力
+        if (json.sellCases && !Array.isArray(json.sellCases)) {
+          console.warn('[useSheetData] sellCases にエラー:', json.sellCases)
+        }
+        if (json.buyCases && !Array.isArray(json.buyCases)) {
+          console.warn('[useSheetData] buyCases にエラー:', json.buyCases)
+        }
+
+        const sellArr = Array.isArray(json.sellCases) ? json.sellCases : []
+        const buyArr  = Array.isArray(json.buyCases)  ? json.buyCases  : []
+
+        const sells = sellArr.length > 0
+          ? sellArr.map((r, i) => mapSellCase(r, i))
           : mockSellCases
 
-        const buys = Array.isArray(json.buyCases) && json.buyCases.length > 0
-          ? json.buyCases.map((r, i) => mapBuyCase(r, i))
+        const buys = buyArr.length > 0
+          ? buyArr.map((r, i) => mapBuyCase(r, i))
           : mockBuyCases
+
+        console.log(`[useSheetData] 取得完了: 売却=${sellArr.length}件, 購入=${buyArr.length}件 (実データ: ${sellArr.length > 0 || buyArr.length > 0})`)
 
         const inqMap = mapInquiryStats(
           json.sellInquiries ?? {},
@@ -134,8 +147,9 @@ export function useSheetData(): SheetData {
         saveToSession(result)
         setData(result)
       })
-      .catch(() => {
+      .catch((err) => {
         // 401 / エラー → sessionStorage をクリアして次回再fetchできるようにする
+        console.error('[useSheetData] fetch失敗:', err)
         clearSheetCache()
         setData({ ...FALLBACK, loaded: true })
       })
