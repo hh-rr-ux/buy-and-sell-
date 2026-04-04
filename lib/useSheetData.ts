@@ -19,7 +19,7 @@ import {
   monthlyStats as mockMonthlyStats,
   type SellCase, type BuyCase, type MonthlyStats,
 } from './mockData'
-import { mapSellCase, mapBuyCase, mapInquiryStats } from './sheetMapper'
+import { mapSellCase, mapBuyCase, mapInquiryStats, mapSalesSummary } from './sheetMapper'
 
 export interface SheetData {
   sellCases:      SellCase[]
@@ -29,7 +29,7 @@ export interface SheetData {
   loaded:         boolean
 }
 
-const SESSION_KEY = 'bns_sheet_data_v3'
+const SESSION_KEY = 'bns_sheet_data_v4'
 
 // ページ間キャッシュ（SPA遷移で再fetchしない）
 let cache: SheetData | null = null
@@ -105,6 +105,7 @@ export function useSheetData(): SheetData {
         buyCases:      Record<string, string>[] | { error: string }
         sellInquiries: Record<string, Record<string, number[]>>
         buyInquiries:  Record<string, Record<string, number[]>>
+        salesSummary:  Record<string, string>[]
       }) => {
         // エラーオブジェクトが返った場合はログ出力
         if (json.sellCases && !Array.isArray(json.sellCases)) {
@@ -132,10 +133,17 @@ export function useSheetData(): SheetData {
           json.buyInquiries  ?? {},
         )
 
+        // 売上集計タブがあればそれを使い、なければモックにinqMapをマージ
+        const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
+        const realStats = salesRows.length > 0 ? mapSalesSummary(salesRows) : null
+        const monthlyStats = realStats && realStats.length > 0
+          ? mergeInquiries(realStats, inqMap)
+          : mergeInquiries(mockMonthlyStats, inqMap)
+
         const result: SheetData = {
           sellCases:      sells,
           buyCases:       buys,
-          monthlyStats:   mergeInquiries(mockMonthlyStats, inqMap),
+          monthlyStats,
           inquirySummary: inqMap,
           loaded:         true,
         }

@@ -194,6 +194,21 @@ export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
   }
 }
 
+/** 売上集計タブ → MonthlyStats[] */
+export function mapSalesSummary(
+  rows: SheetRow[],
+): import('./mockData').MonthlyStats[] {
+  return rows.map(row => {
+    const month = g(row, '月', '売上対象月', '年月', '対象月', '期間')
+    if (!month) return null
+    const revenue     = parseNum(g(row, '売上', '売上合計', '仲介手数料合計', '手数料合計', '売上金額', '合計売上', '売上（税込）'))
+    const closedSell  = parseInt(g(row, '売却成約', '成約（売却）', '売却成約数', '売却件数', '成約件数売却', '売却')) || 0
+    const closedBuy   = parseInt(g(row, '購入成約', '成約（購入）', '購入成約数', '購入件数', '成約件数購入', '購入')) || 0
+    const newInquiries = parseInt(g(row, '新規問い合わせ', '問い合わせ数', '新規問合せ', '問合せ数', '問合せ')) || 0
+    return { month, revenue, closedSell, closedBuy, newInquiries, totalRevenue: revenue }
+  }).filter((m): m is NonNullable<typeof m> => m !== null)
+}
+
 /** タブ名 "26年4月" → "2026年4月" */
 function tabToMonth(tab: string): string {
   const m = tab.match(/^(\d{2})年(\d{1,2})月$/)

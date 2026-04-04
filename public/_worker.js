@@ -485,6 +485,20 @@ async function fetchSpreadsheetTabs(accessToken, spreadsheetId) {
   return (data.sheets || []).map(s => s.properties.title);
 }
 
+// 売上集計タブ: 1行目ヘッダー、2行目以降データ
+async function fetchSalesSummaryData(accessToken, spreadsheetId) {
+  const values = await fetchSheetValues(accessToken, spreadsheetId, '売上集計!A:Z');
+  if (values.length < 2) return [];
+  const headers = values[0];
+  return values.slice(1)
+    .filter(row => row.some(cell => cell !== ''))
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { if (h) obj[h] = row[i] ?? ''; });
+      return obj;
+    });
+}
+
 // 案件管理: 3行目がヘッダー、4行目以降がデータ
 async function fetchCasesData(accessToken, spreadsheetId) {
   const values = await fetchSheetValues(accessToken, spreadsheetId, 'A3:Z500');
@@ -539,14 +553,15 @@ async function fetchSheetsData(env) {
     getRawValue(env, 'GOOGLE_SHEETS_BUY_INQUIRIES_ID'),
   ]);
 
-  const [sellCases, buyCases, sellInquiries, buyInquiries] = await Promise.all([
-    sellCasesId ? fetchCasesData(token, sellCasesId).catch(e => ({ error: e.message }))    : [],
-    buyCasesId  ? fetchCasesData(token, buyCasesId).catch(e => ({ error: e.message }))     : [],
-    sellInqId   ? fetchInquiriesData(token, sellInqId).catch(e => ({ error: e.message }))  : {},
-    buyInqId    ? fetchInquiriesData(token, buyInqId).catch(e => ({ error: e.message }))   : {},
+  const [sellCases, buyCases, sellInquiries, buyInquiries, salesSummary] = await Promise.all([
+    sellCasesId ? fetchCasesData(token, sellCasesId).catch(e => ({ error: e.message }))         : [],
+    buyCasesId  ? fetchCasesData(token, buyCasesId).catch(e => ({ error: e.message }))          : [],
+    sellInqId   ? fetchInquiriesData(token, sellInqId).catch(e => ({ error: e.message }))       : {},
+    buyInqId    ? fetchInquiriesData(token, buyInqId).catch(e => ({ error: e.message }))        : {},
+    sellCasesId ? fetchSalesSummaryData(token, sellCasesId).catch(() => [])                     : [],
   ]);
 
-  return { sellCases, buyCases, sellInquiries, buyInquiries };
+  return { sellCases, buyCases, sellInquiries, buyInquiries, salesSummary };
 }
 
 // ── Chatwork ルーム情報取得 ───────────────────────────────────────────────────
