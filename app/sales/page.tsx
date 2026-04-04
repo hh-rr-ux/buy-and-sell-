@@ -41,14 +41,14 @@ export default function SalesPage() {
     const area = c.prefecture || '不明'
     if (!buyAreaMap[area]) buyAreaMap[area] = { count: 0, revenue: 0 }
     buyAreaMap[area].count++
-    buyAreaMap[area].revenue += calcBrokerageFee(c.budget)
+    buyAreaMap[area].revenue += calcBrokerageFee(c.contractPrice || c.budget)
   }
   const buyAreaRevenue = Object.entries(buyAreaMap).map(([area, v]) => ({ area, ...v })).sort((a, b) => b.revenue - a.revenue)
 
   // 都道府県別 成約件数
   const allClosed = [
     ...closedSell.map(c => ({ prefecture: c.prefecture, fee: calcBrokerageFee(c.askingPrice) })),
-    ...closedBuy.map(c => ({ prefecture: c.prefecture, fee: calcBrokerageFee(c.budget) })),
+    ...closedBuy.map(c => ({ prefecture: c.prefecture, fee: calcBrokerageFee(c.contractPrice || c.budget) })),
   ]
   const prefMap: Record<string, { count: number; revenue: number }> = {}
   for (const c of allClosed) {

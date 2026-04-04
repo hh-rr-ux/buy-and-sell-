@@ -162,11 +162,14 @@ export function mapSellCase(row: SheetRow, idx: number): SellCase {
 }
 
 export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
-  // 購入シート: 買付価格 / 成約価格 → budget, 仲介手数料（税込）→ brokerageFee
-  const budgetStr = g(row, '買付価格', '成約価格', '予算', '購入予算', '物件価格', '価格')
-  const budget    = parseNum(budgetStr)
+  // 購入シート: 買付価格 → budget, 成約価格 → contractPrice
+  const budgetStr   = g(row, '買付価格', '予算', '購入予算', '物件価格', '価格')
+  const contractStr = g(row, '成約価格')
+  const budget        = parseNum(budgetStr)
+  const contractPrice = parseNum(contractStr)
   const feeStr    = g(row, '仲介手数料（税込）', '仲介手数料', '手数料', '報酬額')
-  const fee       = parseNum(feeStr) || (budget > 0 ? calcBrokerageFee(budget) : 0)
+  const basePrice = contractPrice || budget
+  const fee       = parseNum(feeStr) || (basePrice > 0 ? calcBrokerageFee(basePrice) : 0)
   const stageRaw  = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
   const stage     = normalizeStage(stageRaw, [...BUY_STAGES, '相談終了']) as BuyStage
   const startDate = g(row, '面談日', '開始日', '受付日', '問い合わせ日', '登録日')
@@ -179,6 +182,7 @@ export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
     propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ'),
     prefecture:         g(row, 'エリア区分', '都道府県', '県', '府', '都'),
     budget,
+    contractPrice,
     brokerageFee:       fee,
     stage,
     staff:              (g(row, '担当者', '担当', '担当スタッフ', '担当名') || '—') as Staff,

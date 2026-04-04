@@ -43,7 +43,8 @@ export interface BuyCase {
   desiredArea: string
   propertyType: string
   prefecture: string     // 都道府県（スプシ連携時はシートから取得）
-  budget: number         // 予算（円）
+  budget: number         // 買付価格（円）
+  contractPrice: number  // 成約価格（円）— シートの「成約価格」列
   brokerageFee: number   // 仲介手数料（スプシから直接取得）
   stage: BuyStage
   staff: Staff
@@ -301,7 +302,7 @@ export const buyCases: BuyCase[] = [
     id: 'B001', clientName: '伊藤 誠', propertyName: '世田谷・目黒エリア',
     desiredArea: '東京都世田谷区・目黒区', propertyType: 'マンション',
     prefecture: '東京都',
-    budget: 70000000, brokerageFee: calcBrokerageFee(70000000),
+    budget: 70000000, brokerageFee: calcBrokerageFee(70000000), contractPrice: 0,
     stage: '内見', staff: '山田',
     startDate: '2026-02-10', lastContactDate: '2026-03-30',
     notes: '3LDK希望。学区重視。週末内見3件予定。', daysInStage: 15,
@@ -311,7 +312,7 @@ export const buyCases: BuyCase[] = [
     id: 'B002', clientName: '高橋 由美', propertyName: '千葉市戸建て',
     desiredArea: '千葉県千葉市', propertyType: '戸建て',
     prefecture: '千葉県',
-    budget: 55000000, brokerageFee: calcBrokerageFee(55000000),
+    budget: 55000000, brokerageFee: calcBrokerageFee(55000000), contractPrice: 0,
     stage: '購入申し込み', staff: '鈴木',
     startDate: '2026-01-20', lastContactDate: '2026-03-28',
     notes: '4LDK希望。申込書提出済み。', daysInStage: 8,
@@ -321,7 +322,7 @@ export const buyCases: BuyCase[] = [
     id: 'B003', clientName: '森 大輔', propertyName: '代々木パークビュー',
     desiredArea: '東京都渋谷区・新宿区', propertyType: 'マンション',
     prefecture: '東京都',
-    budget: 95000000, brokerageFee: calcBrokerageFee(95000000),
+    budget: 95000000, brokerageFee: calcBrokerageFee(95000000), contractPrice: 0,
     stage: '売買契約', staff: '佐藤',
     startDate: '2025-12-01', lastContactDate: '2026-03-25',
     notes: '2LDK、代々木物件で契約締結。', daysInStage: 5,
@@ -331,7 +332,7 @@ export const buyCases: BuyCase[] = [
     id: 'B004', clientName: '岡田 幸子', propertyName: '浦安シーサイド',
     desiredArea: '千葉県浦安市・市川市', propertyType: 'マンション',
     prefecture: '千葉県',
-    budget: 42000000, brokerageFee: calcBrokerageFee(42000000),
+    budget: 42000000, brokerageFee: calcBrokerageFee(42000000), contractPrice: 0,
     stage: 'ローン審査', staff: '田中',
     startDate: '2025-11-15', lastContactDate: '2026-03-20',
     notes: '2LDK、銀行審査中。結果待ち。', daysInStage: 21,
@@ -341,7 +342,7 @@ export const buyCases: BuyCase[] = [
     id: 'B005', clientName: '木村 博', propertyName: '江戸川・葛飾エリア',
     desiredArea: '東京都江戸川区・葛飾区', propertyType: '戸建て',
     prefecture: '東京都',
-    budget: 38000000, brokerageFee: calcBrokerageFee(38000000),
+    budget: 38000000, brokerageFee: calcBrokerageFee(38000000), contractPrice: 0,
     stage: '問い合わせ', staff: '伊藤',
     startDate: '2026-03-22', lastContactDate: '2026-03-28',
     notes: '3LDK希望。資金計画相談中。', daysInStage: 9,
@@ -351,7 +352,7 @@ export const buyCases: BuyCase[] = [
     id: 'B006', clientName: '清水 雅代', propertyName: '江東リバーサイド',
     desiredArea: '東京都江東区・江戸川区', propertyType: 'マンション',
     prefecture: '東京都',
-    budget: 60000000, brokerageFee: calcBrokerageFee(60000000),
+    budget: 60000000, brokerageFee: calcBrokerageFee(60000000), contractPrice: 0,
     stage: '決済', staff: '山田',
     startDate: '2025-10-20', lastContactDate: '2026-03-31',
     notes: '3LDK、今週決済完了予定。', daysInStage: 2,
@@ -361,7 +362,7 @@ export const buyCases: BuyCase[] = [
     id: 'B007', clientName: '藤田 健太郎', propertyName: '中野・練馬エリア',
     desiredArea: '東京都中野区・練馬区', propertyType: 'マンション',
     prefecture: '東京都',
-    budget: 50000000, brokerageFee: calcBrokerageFee(50000000),
+    budget: 50000000, brokerageFee: calcBrokerageFee(50000000), contractPrice: 0,
     stage: '内見', staff: '鈴木',
     startDate: '2026-03-01', lastContactDate: '2026-03-29',
     notes: '2LDK希望。内見5件実施済み。絞り込み段階。', daysInStage: 22,
@@ -371,7 +372,7 @@ export const buyCases: BuyCase[] = [
     id: 'B008', clientName: '佐藤 美穂', propertyName: '大阪市内マンション',
     desiredArea: '大阪府大阪市', propertyType: 'マンション',
     prefecture: '大阪府',
-    budget: 45000000, brokerageFee: calcBrokerageFee(45000000),
+    budget: 45000000, brokerageFee: calcBrokerageFee(45000000), contractPrice: 0,
     stage: '内見', staff: '佐藤',
     startDate: '2026-03-10', lastContactDate: '2026-03-30',
     notes: '2LDK希望。大阪市内で内見実施中。', daysInStage: 12,
@@ -381,7 +382,7 @@ export const buyCases: BuyCase[] = [
     id: 'B009', clientName: '山田 隆史', propertyName: '大阪市中央区エリア',
     desiredArea: '大阪府大阪市中央区', propertyType: 'マンション',
     prefecture: '大阪府',
-    budget: 38000000, brokerageFee: calcBrokerageFee(38000000),
+    budget: 38000000, brokerageFee: calcBrokerageFee(38000000), contractPrice: 0,
     stage: '問い合わせ', staff: '山田',
     startDate: '2026-03-27', lastContactDate: '2026-03-30',
     notes: '1LDK〜2LDK希望。問い合わせ初期対応中。', daysInStage: 4,

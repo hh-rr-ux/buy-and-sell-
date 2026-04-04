@@ -305,7 +305,7 @@ function AreaAnalysisSection() {
     if (!buyAreaMap[area]) buyAreaMap[area] = { count: 0, totalFee: 0, totalPrice: 0 }
     buyAreaMap[area].count++
     buyAreaMap[area].totalFee += c.brokerageFee
-    buyAreaMap[area].totalPrice += c.budget
+    buyAreaMap[area].totalPrice += c.contractPrice || c.budget
   }
   const buyAreaData = Object.entries(buyAreaMap)
     .map(([area, v]) => ({ area, ...v }))
@@ -441,9 +441,9 @@ function AreaAnalysisSection() {
               <tr className="border-b border-gray-100">
                 <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">都道府県</th>
                 <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">案件数</th>
-                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">物件価格合計</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">販売価格合計</th>
                 <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">仲介手数料合計</th>
-                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">平均価格</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">平均販売価格</th>
               </tr>
             </thead>
             <tbody>
@@ -473,9 +473,9 @@ function AreaAnalysisSection() {
               <tr className="border-b border-gray-100">
                 <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">都道府県</th>
                 <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">案件数</th>
-                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">予算合計</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">成約価格合計</th>
                 <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">仲介手数料合計</th>
-                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">平均予算</th>
+                <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500">平均成約価格</th>
               </tr>
             </thead>
             <tbody>
