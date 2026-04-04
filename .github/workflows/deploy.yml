@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - main
-  # 30分ごとにデータを最新化して再デプロイ
+  # 6時間ごとにデータを最新化して再デプロイ
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -55,3 +55,13 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy out --project-name=buy-and-sell
+
+      # ── デプロイ後に Chatwork メッセージを KV に蓄積 ──────────────────
+      # 認証不要のエンドポイント。KV に保存した Chatwork 設定を使って
+      # 各ルームの最新メッセージを取得・蓄積する。
+      - name: Sync Chatwork messages to KV
+        run: |
+          sleep 10
+          curl -s -X POST "https://buy-and-sell.pages.dev/api/sync-chatwork" \
+            -H "Content-Type: application/json" \
+            --max-time 30 || true
