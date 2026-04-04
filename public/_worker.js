@@ -378,6 +378,142 @@ JSONのみ返答してください。`;
   return JSON.parse(jsonMatch[0]);
 }
 
+// ── Chatwork ルーム情報取得 ───────────────────────────────────────────────────
+const ROOM_TYPES = [
+  { envKey: 'CHATWORK_ROOM_OPERATIONS',   type: 'operations'   },
+  { envKey: 'CHATWORK_ROOM_HP_LINE',      type: 'hp_line'      },
+  { envKey: 'CHATWORK_ROOM_RECRUITMENT',  type: 'recruitment'  },
+  { envKey: 'CHATWORK_ROOM_NOTIFICATION', type: 'notification' },
+  { envKey: 'CHATWORK_ROOM_CUSTOMER',     type: 'customer'     },
+];
+
+async function getChatworkRooms(env) {
+  const token = await getRawValue(env, 'CHATWORK_API_TOKEN');
+  if (!token) return { rooms: [], lastSync: null };
+
+  const lastSync = env.SETTINGS_KV ? await env.SETTINGS_KV.get('chatwork:last_sync') : null;
+  const rooms = [];
+
+  await Promise.all(ROOM_TYPES.map(async def => {
+    const roomId = await getRawValue(env, def.envKey);
+    if (!roomId) return;
+
+    // KV蓄積データを優先
+    if (env.SETTINGS_KV) {
+      const stored = await env.SETTINGS_KV.get(`chatwork:room:${def.type}`);
+      if (stored) {
+        try { rooms.push(JSON.parse(stored)); return; } catch {}
+      }
+    }
+
+    // KVになければライブAPIで取得
+    try {
+      const headers = { 'X-ChatWorkToken': token };
+      const [roomRes, msgRes] = await Promise.all([
+        fetch(`https://api.chatwork.com/v2/rooms/${roomId}`, { headers }),
+        fetch(`https://api.chatwork.com/v2/rooms/${roomId}/messages?force=1`, { headers }),
+      ]);
+      if (!roomRes.ok) return;
+      const roomData = await roomRes.json();
+      const msgs = msgRes.ok ? await msgRes.json() : [];
+      const msgArr = Array.isArray(msgs) ? msgs : [];
+      const latest = msgArr[msgArr.length - 1];
+      rooms.push({
+        roomId,
+        name: roomData.name || '',
+        type: def.type,
+        description: roomData.description || '',
+        unreadCount: roomData.unread_num || 0,
+        latestMessage: latest?.body || '',
+        latestTime: latest
+          ? new Date(latest.send_time * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+          : '',
+      });
+    } catch {}
+  }));
+
+  // notification/customer を先に表示
+  const order = { notification: 0, customer: 1, operations: 2, hp_line: 3, recruitment: 4 };
+  rooms.sort((a, b) => (order[a.type] ?? 9) - (order[b.type] ?? 9));
+
+  return { rooms, lastSync };
+}
+
+// ── Chatwork メッセージ蓄積（12時間おきにGitHub Actionsから呼び出し） ──────────
+const MIN_SYNC_MS = 30 * 60 * 1000;
+
+async function syncChatwork(env) {
+  const kv = env.SETTINGS_KV;
+  if (!kv) return { error: 'SETTINGS_KV が未設定です' };
+
+  const lastSync = await kv.get('chatwork:last_sync');
+  if (lastSync && Date.now() - new Date(lastSync).getTime() < MIN_SYNC_MS) {
+    return { skipped: true, lastSync };
+  }
+
+  const token = await getRawValue(env, 'CHATWORK_API_TOKEN');
+  if (!token) return { error: 'CHATWORK_API_TOKEN が未設定です' };
+
+  const summary = {};
+
+  await Promise.all(ROOM_TYPES.map(async def => {
+    const roomId = await getRawValue(env, def.envKey);
+    if (!roomId) { summary[def.type] = { skipped: true }; return; }
+
+    try {
+      const headers = { 'X-ChatWorkToken': token };
+      const [roomRes, msgRes] = await Promise.all([
+        fetch(`https://api.chatwork.com/v2/rooms/${roomId}`, { headers }),
+        fetch(`https://api.chatwork.com/v2/rooms/${roomId}/messages?force=1`, { headers }),
+      ]);
+      if (!roomRes.ok) { summary[def.type] = { error: `room API ${roomRes.status}` }; return; }
+
+      const roomData = await roomRes.json();
+      const newMsgs = msgRes.ok ? (await msgRes.json()) : [];
+      const msgArr = Array.isArray(newMsgs) ? newMsgs : [];
+      const latest = msgArr[msgArr.length - 1];
+
+      const room = {
+        roomId, name: roomData.name || '', type: def.type,
+        description: roomData.description || '',
+        unreadCount: roomData.unread_num || 0,
+        latestMessage: latest?.body || '',
+        latestTime: latest
+          ? new Date(latest.send_time * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+          : '',
+        syncedAt: new Date().toISOString(),
+      };
+
+      // メッセージ蓄積（重複排除）
+      let existing = [];
+      const raw = await kv.get(`chatwork:messages:${def.type}`);
+      if (raw) { try { existing = JSON.parse(raw); } catch {} }
+      const existingIds = new Set(existing.map(m => m.messageId));
+      const newStored = msgArr
+        .filter(m => !existingIds.has(String(m.message_id)))
+        .map(m => ({
+          messageId: String(m.message_id),
+          roomId, roomName: roomData.name || '', roomType: def.type,
+          account: { name: m.account?.name || '' },
+          body: m.body || '', sendTime: m.send_time || 0,
+        }));
+      const merged = [...existing, ...newStored].sort((a, b) => a.sendTime - b.sendTime);
+
+      await Promise.all([
+        kv.put(`chatwork:room:${def.type}`, JSON.stringify(room)),
+        kv.put(`chatwork:messages:${def.type}`, JSON.stringify(merged)),
+      ]);
+
+      summary[def.type] = { roomName: room.name, newMessages: newStored.length, total: merged.length };
+    } catch (e) {
+      summary[def.type] = { error: e.message };
+    }
+  }));
+
+  await kv.put('chatwork:last_sync', new Date().toISOString());
+  return { ok: true, syncedAt: new Date().toISOString(), summary };
+}
+
 // ── API ルーティング ──────────────────────────────────────────────────────────
 async function handleAPI(request, env, path) {
   const json = (data, status = 200) =>
@@ -402,6 +538,11 @@ async function handleAPI(request, env, path) {
         return json({ ok: true });
       } catch (e) { return json({ error: e.message }, 500); }
     }
+  }
+
+  if (path === '/api/chatwork-rooms' && request.method === 'GET') {
+    try { return json(await getChatworkRooms(env)); }
+    catch (e) { return json({ error: e.message }, 500); }
   }
 
   return new Response('Not Found', { status: 404 });
@@ -463,6 +604,22 @@ export default {
     // ── セッション確認 ──
     const role = await getSession(request, env);
     const loginRedirect = `/login?next=${encodeURIComponent(path)}`;
+
+    // Chatwork同期（GitHub Actionsから呼び出し、認証不要）
+    if (path === '/api/sync-chatwork' && request.method === 'POST') {
+      try {
+        const result = await syncChatwork(env);
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // セッション確認API（ログイン済みなら誰でも利用可）
     if (path === '/api/auth/check') {
