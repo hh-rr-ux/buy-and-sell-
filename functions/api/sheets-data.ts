@@ -24,7 +24,7 @@
  */
 
 const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
-const CACHE_KEY = 'sheets:data:v2'  // paymentRecords追加でv2に変更
+const CACHE_KEY = 'sheets:data:v3'  // 直接env読み込みデバッグ用にv3に変更
 const CACHE_TTL_SECONDS = 300 // 5分
 
 interface KVNamespace {
@@ -126,6 +126,11 @@ function rowsToInquiryData(
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+  // ── 環境変数を直接ログ（KV経由ではなく env から直読み） ──
+  console.log('[sheets-data] PAYMENT_RANGE=', env.GOOGLE_SHEETS_PAYMENT_RANGE)
+  console.log('[sheets-data] SUMMARY_RANGE=', env.GOOGLE_SHEETS_SUMMARY_RANGE)
+  console.log('[sheets-data] SHEETS_ID=', env.GOOGLE_SHEETS_ID ? '(set)' : '(unset)')
+
   const kv = env.SETTINGS_KV
 
   // ── KVキャッシュ確認（5分以内なら再利用） ──
@@ -181,16 +186,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const effectiveSellRange = sellRange || '【売却】案件管理!A1:Z500'
   const effectiveBuyRange  = buyRange  || '【購入】案件管理!A1:Z500'
 
+  // ── paymentRange は KV よりも env を優先（KV に空文字が混入するケースを回避） ──
+  const effectivePaymentRange = env.GOOGLE_SHEETS_PAYMENT_RANGE || paymentRange
+
   // ── batchGet: 全レンジを 1 回の API リクエストで取得 ──
   const allRanges: string[] = [effectiveSellRange, effectiveBuyRange]
-  if (sellInqRange) allRanges.push(sellInqRange)
-  if (buyInqRange)  allRanges.push(buyInqRange)
-  if (summaryRange) allRanges.push(summaryRange)
-  if (paymentRange) allRanges.push(paymentRange)
+  if (sellInqRange)          allRanges.push(sellInqRange)
+  if (buyInqRange)           allRanges.push(buyInqRange)
+  if (summaryRange)          allRanges.push(summaryRange)
+  if (effectivePaymentRange) allRanges.push(effectivePaymentRange)
 
   console.log(`[sheets-data] batchGet: ${allRanges.length}レンジ → Sheets APIリクエスト1回`)
   console.log('[sheets-data] リクエストレンジ一覧:', allRanges)
-  console.log(`[sheets-data] 入金確認レンジ: ${paymentRange ? `"${paymentRange}" (index=${allRanges.indexOf(paymentRange)})` : '未設定（スキップ）'}`)
+  console.log(`[sheets-data] 入金確認レンジ: ${effectivePaymentRange ? `"${effectivePaymentRange}" (index=${allRanges.indexOf(effectivePaymentRange)})` : '未設定（スキップ）'}`)
+  console.log('[sheets-data] paymentRange(KV)=', paymentRange || '(空)', '  env直読み=', env.GOOGLE_SHEETS_PAYMENT_RANGE || '(空)')
 
   const batchResult = await batchGetRanges(sheetsId, apiKey, allRanges)
 
@@ -211,10 +220,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   let idx = 0
   const sellValues    = batchResult[idx++] ?? []
   const buyValues     = batchResult[idx++] ?? []
-  const sellInqValues  = sellInqRange  ? (batchResult[idx++] ?? []) : []
-  const buyInqValues   = buyInqRange   ? (batchResult[idx++] ?? []) : []
-  const summaryValues  = summaryRange  ? (batchResult[idx++] ?? []) : []
-  const paymentValues  = paymentRange  ? (batchResult[idx++] ?? []) : []
+  const sellInqValues  = sellInqRange          ? (batchResult[idx++] ?? []) : []
+  const buyInqValues   = buyInqRange           ? (batchResult[idx++] ?? []) : []
+  const summaryValues  = summaryRange          ? (batchResult[idx++] ?? []) : []
+  const paymentValues  = effectivePaymentRange ? (batchResult[idx++] ?? []) : []
 
   const sellCases     = valuesToRows(sellValues)
   const buyCases      = valuesToRows(buyValues)
@@ -225,8 +234,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
   console.log(
     `[sheets-data] 取得完了: 売却=${sellCases.length}件, 購入=${buyCases.length}件, ` +
-    `入金=${paymentRecords.length}件 (paymentRange設定=${!!paymentRange})`,
+    `入金=${paymentRecords.length}件 (effectivePaymentRange設定=${!!effectivePaymentRange})`,
   )
+  console.log('[sheets-data] paymentRecords件数=', paymentRecords.length)
   if (paymentRecords.length > 0) {
     console.log('[sheets-data] paymentRecords先頭2件:', JSON.stringify(paymentRecords.slice(0, 2)))
   }
