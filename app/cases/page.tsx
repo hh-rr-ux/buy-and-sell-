@@ -12,6 +12,7 @@ import {
   type SellCase, type BuyCase, type Staff,
 } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
+import { buildBothHandsMap } from '@/lib/pairingUtils'
 
 const STAGE_COLORS: Record<string, string> = {
   '問い合わせ':    '#6b7280',
@@ -26,12 +27,14 @@ const STAGE_COLORS: Record<string, string> = {
   '相談終了':     '#9ca3af',
 }
 
-// 全ステージ（売却→購入の順で重複排除 + 相談終了）
+// 全ステージ（売却→購入の順で重複排除）※相談終了はカンバン・サマリー非表示
 const ALL_STAGES = [
   ...SELL_STAGES,
   ...BUY_STAGES.filter(s => !SELL_STAGES.includes(s as typeof SELL_STAGES[number])),
   '相談終了',
 ]
+// ボード・件数サマリー用（相談終了を除外）
+const BOARD_STAGES = ALL_STAGES.filter(s => s !== '相談終了')
 
 type TypeFilter = 'すべて' | '売却' | '購入'
 
@@ -152,11 +155,11 @@ export default function CasesPage() {
     return true
   })
 
-  // ボード表示用のステージ一覧
+  // ボード表示用のステージ一覧（相談終了は非表示）
   const boardStages =
-    typeFilter === '売却' ? [...SELL_STAGES, '相談終了'] :
-    typeFilter === '購入' ? [...BUY_STAGES, '相談終了'] :
-    ALL_STAGES
+    typeFilter === '売却' ? SELL_STAGES as string[] :
+    typeFilter === '購入' ? BUY_STAGES as string[] :
+    BOARD_STAGES
 
   const stageStats = boardStages.map(s => ({
     stage: s,
@@ -331,10 +334,12 @@ export default function CasesPage() {
     },
   ]
 
-  // ボード用に price フィールドを付与
+  // ボード用に price フィールドと両手情報を付与
+  const bothHandsMap = buildBothHandsMap(allCases)
   const boardCases = filtered.map(c => ({
     ...c,
     price: c.contractPrice || c.askingPrice || c.budget,
+    bothHandsInfo: bothHandsMap.get(c.id),
   }))
 
   return (

@@ -13,6 +13,7 @@ interface Case {
   propertyType?: string
   propertyAddress?: string
   desiredArea?: string
+  bothHandsInfo?: { partnerType: string; partnerStage: string }
 }
 
 interface PipelineBoardProps {
@@ -109,6 +110,12 @@ export default function PipelineBoard({ stages, cases, stageColors }: PipelineBo
                       <p className="text-xs text-gray-500 mb-1.5 leading-snug truncate" title={c.desiredArea}>
                         {c.desiredArea}
                       </p>
+                    )}
+                    {c.bothHandsInfo && (
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">両手</span>
+                        <span className="text-[10px] text-indigo-500">{c.bothHandsInfo.partnerType}: {c.bothHandsInfo.partnerStage}</span>
+                      </div>
                     )}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
                       <span className="text-xs text-blue-600 font-semibold">

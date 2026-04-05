@@ -14,6 +14,7 @@ import {
 } from '@/lib/mockData'
 import { calculateKPIs } from '@/lib/dataLoader'
 import { useSheetData } from '@/lib/useSheetData'
+import { buildBothHandsMap } from '@/lib/pairingUtils'
 
 const STAGE_COLORS: Record<string, string> = {
   '問い合わせ': '#6b7280', '査定': '#3b82f6', '媒介契約': '#8b5cf6',
@@ -130,7 +131,7 @@ export default function DashboardPage() {
 
   // ── 決済間近案件（修正2・3: 価格表示 + 物件名ペアリング） ──────────────────────
   type NearCase = {
-    id: string; name: string; clientName: string
+    id: string; propertyName: string; clientName: string
     stage: string; staff: string; type: '売却' | '購入'
     counterpartyBroker: string
     price: number   // 優先価格（成約価格 > 販売価格 > 査定価格）
@@ -142,7 +143,7 @@ export default function DashboardPage() {
       .filter(c => c.stage === '売買契約' || c.stage === '決済')
       .map(c => {
         const price = getBestSellPrice(c)
-        return { id: c.id, name: c.propertyName, clientName: c.clientName,
+        return { id: c.id, propertyName: c.propertyName, clientName: c.clientName,
           stage: c.stage, staff: c.staff, type: '売却' as const,
           counterpartyBroker: c.counterpartyBroker,
           price, fee: c.brokerageFee || calcBrokerageFee(price) }
@@ -151,24 +152,25 @@ export default function DashboardPage() {
       .filter(c => c.stage === 'ローン審査' || c.stage === '売買契約' || c.stage === '決済')
       .map(c => {
         const price = getBestBuyPrice(c)
-        return { id: c.id, name: c.propertyName, clientName: c.clientName,
+        return { id: c.id, propertyName: c.propertyName, clientName: c.clientName,
           stage: c.stage, staff: c.staff, type: '購入' as const,
           counterpartyBroker: c.counterpartyBroker,
           price, fee: c.brokerageFee || calcBrokerageFee(price) }
       }),
   ]
 
-  // 物件名ペアリング（修正3）
+  // 物件名ペアリング（共通ユーティリティ使用）
+  const nearBothHandsMap = buildBothHandsMap(nearClosing)
   const pairedNames = new Set<string>()
   type Pair = { sell?: NearCase; buy?: NearCase }
   const pairs: Pair[] = []
   const unpaired: NearCase[] = []
 
   for (const c of nearClosing) {
-    if (pairedNames.has(c.name)) continue
-    const partner = nearClosing.find(p => p.name === c.name && p.type !== c.type)
-    if (partner) {
-      pairedNames.add(c.name)
+    if (pairedNames.has(c.propertyName)) continue
+    if (nearBothHandsMap.has(c.id)) {
+      const partner = nearClosing.find(p => p.propertyName === c.propertyName && p.type !== c.type)!
+      pairedNames.add(c.propertyName)
       pairs.push({
         sell: c.type === '売却' ? c : partner,
         buy:  c.type === '購入' ? c : partner,
@@ -178,7 +180,7 @@ export default function DashboardPage() {
     }
   }
   // ペア済みのunpairedからも除外
-  const unpairedFiltered = unpaired.filter(c => !pairedNames.has(c.name))
+  const unpairedFiltered = unpaired.filter(c => !pairedNames.has(c.propertyName))
 
   // ── 滞留案件（修正8: 修正済みdaysInStageを使用） ──────────────────────────────
   const stalledCases = [
@@ -212,7 +214,7 @@ export default function DashboardPage() {
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+            <p className="text-sm font-semibold text-gray-800 truncate">{c.propertyName}</p>
             {c.price > 0 && (
               <span className="text-xs text-gray-500 flex-shrink-0">
                 {formatPrice(c.price)}
@@ -495,7 +497,7 @@ export default function DashboardPage() {
                   <div key={`pair-${i}`} className="rounded-xl border-2 border-indigo-100 bg-indigo-50/30 overflow-hidden">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-indigo-100 bg-indigo-50">
                       <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">同一物件</span>
-                      <span className="text-xs font-semibold text-indigo-700 truncate">{pair.sell?.name ?? pair.buy?.name}</span>
+                      <span className="text-xs font-semibold text-indigo-700 truncate">{pair.sell?.propertyName ?? pair.buy?.propertyName}</span>
                     </div>
                     <div className="p-2 space-y-1.5">
                       {pair.sell && <CaseRow c={pair.sell} bg="green" />}
