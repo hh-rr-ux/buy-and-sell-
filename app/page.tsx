@@ -122,6 +122,12 @@ export default function DashboardPage() {
     : 0
   const paymentTrendUp = paymentTrend >= 0
 
+  // 成約数の先月比（monthlyStats の末尾2件から判定）
+  const prevMonthStats     = monthlyStats.length >= 2 ? monthlyStats[monthlyStats.length - 2] : null
+  const prevClosedDeals    = prevMonthStats ? (prevMonthStats.closedSell + prevMonthStats.closedBuy) : 0
+  const hasLastMonthDeals  = prevClosedDeals > 0
+  const closedUp           = kpis.closedDealsTrend >= 0
+
   // ── 決済間近案件（修正2・3: 価格表示 + 物件名ペアリング） ──────────────────────
   type NearCase = {
     id: string; name: string; clientName: string
@@ -193,7 +199,6 @@ export default function DashboardPage() {
   ]
 
   const nearClosingFee = nearClosing.reduce((s, c) => s + c.fee, 0)
-  const closedUp   = kpis.closedDealsTrend >= 0
 
   function CaseRow({ c, bg }: { c: NearCase; bg: 'green' | 'red' }) {
     const isBothHands = c.counterpartyBroker === 'リベ'
@@ -307,9 +312,17 @@ export default function DashboardPage() {
               <p className="text-white text-3xl font-black tracking-tight">
                 {kpis.monthlyClosedDeals}<span className="text-lg font-medium text-white/60 ml-1">件</span>
               </p>
-              <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${closedUp ? 'text-green-400' : 'text-red-400'}`}>
-                {closedUp ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
-                先月比 {closedUp ? '+' : ''}{kpis.closedDealsTrend}%
+              <div className="flex items-center gap-1 mt-2 text-xs font-semibold text-white/40">
+                {hasLastMonthDeals ? (
+                  <>
+                    {closedUp ? <TrendingUp size={13} className="text-green-400"/> : <TrendingDown size={13} className="text-red-400"/>}
+                    <span className={closedUp ? 'text-green-400' : 'text-red-400'}>
+                      先月比 {closedUp ? '+' : ''}{kpis.closedDealsTrend}%
+                    </span>
+                  </>
+                ) : (
+                  <span>先月比 —</span>
+                )}
               </div>
             </div>
           </div>
