@@ -31,8 +31,10 @@ jobs:
       # ── Chatwork & Google Sheets からデータを取得 ────────────────────
       # data/ ディレクトリに JSON を生成するが、リポジトリにはコミットしない。
       # ビルド時のみ使用し、そのまま破棄される。
+      # continue-on-error: true → データ取得失敗でもビルド・デプロイを継続
       - name: Fetch data from APIs
         run: node scripts/fetch-data.js
+        continue-on-error: true
         env:
           CHATWORK_API_TOKEN:         ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_OPERATIONS:   ${{ secrets.CHATWORK_ROOM_OPERATIONS }}
@@ -46,7 +48,10 @@ jobs:
           GOOGLE_SHEETS_LINE_RANGE:   ${{ secrets.GOOGLE_SHEETS_LINE_RANGE }}
 
       - name: Build
-        run: npm run build
+        run: next build
+
+      - name: Inject _worker.js into out/
+        run: cp _worker.js out/_worker.js
 
       # ── Cloudflare Pages にデプロイ ──────────────────────────────────
       - name: Deploy to Cloudflare Pages
