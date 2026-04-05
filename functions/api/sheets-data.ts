@@ -245,6 +245,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   }
 
   // レンジ順にインデックスで取り出す
+  console.log(`[sheets-data] batchResult配列長=${batchResult.length} 期待レンジ数=${allRanges.length}`)
   let idx = 0
   const sellValues    = batchResult[idx++] ?? []
   const buyValues     = batchResult[idx++] ?? []
@@ -252,6 +253,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const buyInqValues   = buyInqRange           ? (batchResult[idx++] ?? []) : []
   const summaryValues  = effectiveSummaryRange ? (batchResult[idx++] ?? []) : []
   const paymentValues  = effectivePaymentRange ? (batchResult[idx++] ?? []) : []
+
+  console.log(`[sheets-data] paymentValues生データ: 行数=${paymentValues.length} effectivePaymentRange="${effectivePaymentRange || '未設定'}"`)
+  if (paymentValues.length > 0) console.log('[sheets-data] paymentValues先頭行:', JSON.stringify(paymentValues[0]))
 
   const sellCases     = valuesToRows(sellValues)
   const buyCases      = valuesToRows(buyValues)
