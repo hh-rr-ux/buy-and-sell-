@@ -101,7 +101,7 @@ export default function SellPage() {
     },
     {
       key: 'daysInStage' as keyof SellCase,
-      label: 'ステージ経過',
+      label: '面談からの日数',
       sortable: true,
       render: (v: SellCase[keyof SellCase]) => {
         const days = Number(v)
@@ -116,7 +116,7 @@ export default function SellPage() {
     },
     {
       key: 'lastContactDate' as keyof SellCase,
-      label: '売買契約日',
+      label: '次回報告日',
       sortable: true,
       render: (v: SellCase[keyof SellCase]) => (
         <span className="text-xs text-gray-500">{String(v)}</span>

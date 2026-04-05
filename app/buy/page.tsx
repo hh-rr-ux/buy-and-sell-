@@ -109,7 +109,7 @@ export default function BuyPage() {
     },
     {
       key: 'daysInStage' as keyof BuyCase,
-      label: 'ステージ経過',
+      label: '面談からの日数',
       sortable: true,
       render: (v: BuyCase[keyof BuyCase]) => {
         const days = Number(v)

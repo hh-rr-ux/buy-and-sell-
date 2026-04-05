@@ -154,7 +154,7 @@ export function mapSellCase(row: SheetRow, idx: number): SellCase {
     stage,
     staff:              (g(row, '担当者', '担当', '担当スタッフ', '担当名') || '—') as Staff,
     startDate,
-    lastContactDate:    g(row, '次回報告日', '売買契約日', '決済日', '最終連絡日', '最終対応日'),
+    lastContactDate:    g(row, '次回報告日', '決済日', '売買契約日', '最終連絡日', '最終対応日'),
     notes:              g(row, 'メモ', '備考', '特記事項', 'コメント', '備考欄'),
     daysInStage:        daysFromDate(startDate),
     counterpartyBroker: g(row, '買側業者', '対応業者', '相手業者', '仲介業者', '購入側業者') || '—',

@@ -268,7 +268,7 @@ export default function CasesPage() {
     },
     {
       key: 'daysInStage' as keyof UnifiedCase,
-      label: 'ステージ経過',
+      label: '面談からの日数',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => {
         const days = Number(v)
@@ -281,7 +281,7 @@ export default function CasesPage() {
     },
     {
       key: 'lastContactDate' as keyof UnifiedCase,
-      label: '決済日',
+      label: '次回報告日',
       sortable: true,
       render: (v: UnifiedCase[keyof UnifiedCase]) => (
         <span className="text-xs text-gray-500">{String(v) || '—'}</span>
