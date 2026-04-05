@@ -6,6 +6,11 @@
  * /api/sheets-data からスプシデータを取得し、
  * SellCase[] / BuyCase[] にマッピングして返す。
  *
+ * dataSource フィールドで「今どのデータを表示しているか」を返す:
+ *   'real'          → APIから取得した実データ
+ *   'mock_fallback' → APIが空・エラーのためデモデータを表示中
+ *   'error'         → fetch自体が失敗（ネットワークエラー等）
+ *
  * キャッシュ優先度:
  *   1. モジュールキャッシュ（SPA遷移で再fetchしない）
  *   2. sessionStorage（リロード後も即時表示）
@@ -27,9 +32,14 @@ export interface SheetData {
   monthlyStats:   MonthlyStats[]
   inquirySummary: Record<string, { newInquiries: number; closedSell: number; closedBuy: number }>
   loaded:         boolean
+  /** 'real' = 実データ表示中 / 'mock_fallback' = デモデータ表示中 / 'error' = fetch失敗 */
+  dataSource:     'real' | 'mock_fallback' | 'error'
+  /** dataSource が 'mock_fallback' / 'error' の場合の詳細メッセージ */
+  errorMessage?:  string
 }
 
-const SESSION_KEY = 'bns_sheet_data_v11'
+// セッションキーを上げてキャッシュ互換を切る
+const SESSION_KEY = 'bns_sheet_data_v13'
 
 // ページ間キャッシュ（SPA遷移で再fetchしない）
 let cache: SheetData | null = null
@@ -40,6 +50,7 @@ const FALLBACK: SheetData = {
   monthlyStats:   mockMonthlyStats,
   inquirySummary: {},
   loaded:         false,
+  dataSource:     'mock_fallback',
 }
 
 function loadFromSession(): SheetData | null {
@@ -97,7 +108,7 @@ export function useSheetData(): SheetData {
     // 常にAPIから最新データをfetch
     fetch('/api/sheets-data')
       .then(r => {
-        if (!r.ok) throw new Error(`${r.status}`)
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
       })
       .then((json: {
@@ -107,26 +118,57 @@ export function useSheetData(): SheetData {
         buyInquiries:  Record<string, Record<string, number[]>>
         salesSummary:  Record<string, string>[]
       }) => {
-        // エラーオブジェクトが返った場合はログ出力
-        if (json.sellCases && !Array.isArray(json.sellCases)) {
-          console.warn('[useSheetData] sellCases にエラー:', json.sellCases)
-        }
-        if (json.buyCases && !Array.isArray(json.buyCases)) {
-          console.warn('[useSheetData] buyCases にエラー:', json.buyCases)
-        }
+        // ─── DEBUG: APIレスポンス全体をコンソールに出力 ───
+        console.group('[useSheetData] APIレスポンス')
+        console.log('sellCases:', json.sellCases)
+        console.log('buyCases:', json.buyCases)
+        console.log('sellInquiries:', json.sellInquiries)
+        console.log('buyInquiries:', json.buyInquiries)
+        console.log('salesSummary:', json.salesSummary)
+        console.groupEnd()
+        // ──────────────────────────────────────────────────
+
+        // エラーオブジェクトが返った場合の詳細ログ
+        const sellError = !Array.isArray(json.sellCases) && json.sellCases
+          ? (json.sellCases as { error: string }).error
+          : null
+        const buyError = !Array.isArray(json.buyCases) && json.buyCases
+          ? (json.buyCases as { error: string }).error
+          : null
+
+        if (sellError) console.warn('[useSheetData] sellCases エラー:', sellError)
+        if (buyError)  console.warn('[useSheetData] buyCases エラー:', buyError)
 
         const sellArr = Array.isArray(json.sellCases) ? json.sellCases : []
         const buyArr  = Array.isArray(json.buyCases)  ? json.buyCases  : []
 
-        const sells = sellArr.length > 0
+        console.log(`[useSheetData] 件数: 売却=${sellArr.length}件, 購入=${buyArr.length}件`)
+
+        // データソース判定
+        const sellFromApi = sellArr.length > 0
+        const buyFromApi  = buyArr.length > 0
+        const isRealData  = sellFromApi || buyFromApi
+
+        let dataSource: SheetData['dataSource'] = isRealData ? 'real' : 'mock_fallback'
+        let errorMessage: string | undefined
+
+        if (!isRealData) {
+          const reasons: string[] = []
+          if (sellError) reasons.push(`売却: ${sellError}`)
+          else           reasons.push('売却: 0件')
+          if (buyError)  reasons.push(`購入: ${buyError}`)
+          else           reasons.push('購入: 0件')
+          errorMessage = reasons.join(' / ')
+          console.warn('[useSheetData] 実データなし → デモデータ表示:', errorMessage)
+        }
+
+        const sells = sellFromApi
           ? sellArr.map((r, i) => mapSellCase(r, i))
           : mockSellCases
 
-        const buys = buyArr.length > 0
+        const buys = buyFromApi
           ? buyArr.map((r, i) => mapBuyCase(r, i))
           : mockBuyCases
-
-        console.log(`[useSheetData] 取得完了: 売却=${sellArr.length}件, 購入=${buyArr.length}件 (実データ: ${sellArr.length > 0 || buyArr.length > 0})`)
 
         const inqMap = mapInquiryStats(
           json.sellInquiries ?? {},
@@ -146,16 +188,18 @@ export function useSheetData(): SheetData {
           monthlyStats,
           inquirySummary: inqMap,
           loaded:         true,
+          dataSource,
+          errorMessage,
         }
         cache = result
         saveToSession(result)
         setData(result)
       })
       .catch((err) => {
-        // 401 / エラー → sessionStorage をクリアして次回再fetchできるようにする
-        console.error('[useSheetData] fetch失敗:', err)
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[useSheetData] fetch失敗:', message)
         clearSheetCache()
-        setData({ ...FALLBACK, loaded: true })
+        setData({ ...FALLBACK, loaded: true, dataSource: 'error', errorMessage: message })
       })
   }, [])
 
