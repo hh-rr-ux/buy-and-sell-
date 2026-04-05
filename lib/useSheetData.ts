@@ -11,10 +11,11 @@
  *   'mock_fallback' → APIが空・エラーのためデモデータを表示中
  *   'error'         → fetch自体が失敗（ネットワークエラー等）
  *
- * ── リクエスト最適化 ──
- * 1. モジュールキャッシュ + TTL: 5分以内のSPA遷移では再fetchしない
- * 2. sessionStorage + TTL: リロード後も5分以内なら前回データを即時表示
- * 3. pendingFetch: 複数コンポーネントが同時にmountしても /api/sheets-data は1回だけ呼ぶ
+ * ── キャッシュ戦略 ──
+ * 1. モジュールレベルの cache + cacheTime: SPA遷移では再fetchしない（5分TTL）
+ * 2. sessionStorage + fetchedAt: リロード後も5分以内なら前回データを即時表示
+ * 3. pendingFetch: 複数コンポーネントが同時にmountしても1回だけfetch
+ * 4. エラー時はキャッシュをクリアしない（既存キャッシュを維持してリトライを防ぐ）
  */
 
 import { useState, useEffect } from 'react'
@@ -38,21 +39,17 @@ export interface SheetData {
   errorMessage?:  string
 }
 
-const SESSION_KEY = 'bns_sheet_data_v22'
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5分
+const SESSION_KEY  = 'bns_sheet_data_v24'
+const CACHE_TTL_MS = 300_000 // 5分
 
-// ── モジュールレベルのキャッシュ・状態（全コンポーネント共有） ──
-let cache: SheetData | null = null
-let cacheExpiresAt = 0
-/**
- * 進行中のfetch Promise。
- * 複数コンポーネントが同時にuseSheetData()を呼んでも
- * /api/sheets-data へのリクエストは1回だけになる。
- */
+// ── モジュールレベルのキャッシュ（全ページ共有・1チャンクに格納済み） ──
+let cache:        SheetData | null = null
+let cacheTime     = 0               // 最後に成功したfetchのDate.now()
 let pendingFetch: Promise<SheetData> | null = null
 
-function isCacheValid(): boolean {
-  return cache !== null && Date.now() < cacheExpiresAt
+/** 5分以内に成功したfetchキャッシュが存在するか */
+function isFresh(): boolean {
+  return cache !== null && Date.now() - cacheTime < CACHE_TTL_MS
 }
 
 const FALLBACK: SheetData = {
@@ -64,17 +61,14 @@ const FALLBACK: SheetData = {
   dataSource:     'mock_fallback',
 }
 
-// sessionStorage に保存する際は fetchedAt を付加
-type StoredSheetData = SheetData & { fetchedAt?: number }
-
+// ── sessionStorage ────────────────────────────────────────────────────────
 function loadFromSession(): SheetData | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as StoredSheetData
+    const parsed = JSON.parse(raw) as SheetData & { fetchedAt?: number }
     if (!parsed.loaded) return null
-    // TTLチェック: fetchedAt がない or 期限切れなら使わない
     if (!parsed.fetchedAt || Date.now() - parsed.fetchedAt > CACHE_TTL_MS) {
       sessionStorage.removeItem(SESSION_KEY)
       return null
@@ -86,23 +80,22 @@ function loadFromSession(): SheetData | null {
 function saveToSession(data: SheetData) {
   if (typeof window === 'undefined') return
   try {
-    const stored: StoredSheetData = { ...data, fetchedAt: Date.now() }
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...data, fetchedAt: Date.now() }))
   } catch {}
 }
 
 export function clearSheetCache() {
-  cache = null
-  cacheExpiresAt = 0
+  cache     = null
+  cacheTime = 0
   if (typeof window !== 'undefined') {
     try { sessionStorage.removeItem(SESSION_KEY) } catch {}
   }
 }
 
-/** モック monthlyStats に実際の問い合わせ数をマージする */
+// ── データマッピング ──────────────────────────────────────────────────────
 function mergeInquiries(
-  stats:   MonthlyStats[],
-  inqMap:  Record<string, { newInquiries: number; closedSell: number; closedBuy: number }>,
+  stats:  MonthlyStats[],
+  inqMap: Record<string, { newInquiries: number; closedSell: number; closedBuy: number }>,
 ): MonthlyStats[] {
   return stats.map(m => {
     const real = inqMap[m.month]
@@ -116,150 +109,125 @@ function mergeInquiries(
   })
 }
 
-/**
- * /api/sheets-data を fetch して SheetData を返す。
- * - モジュールキャッシュが5分以内なら即座にキャッシュを返す（fetch不要）
- * - 既に進行中の fetch がある場合は同じ Promise を返す（重複排除）
- */
-function startSheetFetch(): Promise<SheetData> {
-  // ① モジュールキャッシュが有効なら fetch しない（SPA遷移の最適化）
-  if (isCacheValid()) {
-    const remainSec = Math.round((cacheExpiresAt - Date.now()) / 1000)
-    console.log(`[useSheetData] モジュールキャッシュHIT（残り${remainSec}秒）→ APIリクエストなし`)
-    return Promise.resolve(cache!)
-  }
+// ── fetch 本体 ────────────────────────────────────────────────────────────
+async function fetchSheetData(): Promise<SheetData> {
+  console.log('[useSheetData] /api/sheets-data へリクエスト開始')
 
-  // ② 同じ fetch が進行中なら使い回す（同一ページ内の複数コンポーネント対策）
-  if (pendingFetch) {
-    console.log('[useSheetData] 重複排除: 進行中のfetchを再利用（APIリクエストは発生しない）')
-    return pendingFetch
-  }
+  try {
+    const r = await fetch('/api/sheets-data')
+    const cacheStatus = r.headers.get('X-Cache') ?? '不明'
+    const sheetsReqs  = r.headers.get('X-Sheets-Requests') ?? '?'
+    console.log(`[useSheetData] レスポンス: HTTP ${r.status} | X-Cache=${cacheStatus} | Sheets API=${sheetsReqs}回`)
 
-  // ③ 新規 fetch
-  console.log('[useSheetData] /api/sheets-data へリクエスト開始 (#1)')
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
 
-  pendingFetch = fetch('/api/sheets-data')
-    .then(async r => {
-      const cacheStatus = r.headers.get('X-Cache') ?? '不明'
-      const sheetsReqs  = r.headers.get('X-Sheets-Requests') ?? '?'
-      console.log(
-        `[useSheetData] レスポンス受信: HTTP ${r.status} | X-Cache=${cacheStatus} | Sheets APIリクエスト数=${sheetsReqs}回`,
-      )
-
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      return r.json()
-    })
-    .then((json: {
+    const json = (await r.json()) as {
       sellCases:     Record<string, string>[] | { error: string }
       buyCases:      Record<string, string>[] | { error: string }
       sellInquiries: Record<string, Record<string, number[]>>
       buyInquiries:  Record<string, Record<string, number[]>>
       salesSummary:  Record<string, string>[]
-    }) => {
-      // ─── DEBUG: APIレスポンス全体をコンソールに出力 ───
-      console.group('[useSheetData] APIレスポンス詳細')
-      console.log('sellCases:', json.sellCases)
-      console.log('buyCases:', json.buyCases)
-      console.log('sellInquiries:', json.sellInquiries)
-      console.log('buyInquiries:', json.buyInquiries)
-      console.log('salesSummary:', json.salesSummary)
-      console.groupEnd()
-      // ────────────────────────────────────────────────────
+    }
 
-      const sellError = !Array.isArray(json.sellCases) && json.sellCases
-        ? (json.sellCases as { error: string }).error : null
-      const buyError = !Array.isArray(json.buyCases) && json.buyCases
-        ? (json.buyCases as { error: string }).error : null
+    // ─── DEBUG ───
+    console.group('[useSheetData] APIレスポンス詳細')
+    console.log('sellCases:', json.sellCases)
+    console.log('buyCases:', json.buyCases)
+    console.log('sellInquiries:', json.sellInquiries)
+    console.log('buyInquiries:', json.buyInquiries)
+    console.log('salesSummary:', json.salesSummary)
+    console.groupEnd()
+    // ─────────────
 
-      if (sellError) console.warn('[useSheetData] sellCases エラー:', sellError)
-      if (buyError)  console.warn('[useSheetData] buyCases エラー:', buyError)
+    const sellError = !Array.isArray(json.sellCases) && json.sellCases
+      ? (json.sellCases as { error: string }).error : null
+    const buyError  = !Array.isArray(json.buyCases) && json.buyCases
+      ? (json.buyCases as { error: string }).error : null
 
-      const sellArr = Array.isArray(json.sellCases) ? json.sellCases : []
-      const buyArr  = Array.isArray(json.buyCases)  ? json.buyCases  : []
+    if (sellError) console.warn('[useSheetData] sellCases エラー:', sellError)
+    if (buyError)  console.warn('[useSheetData] buyCases エラー:', buyError)
 
-      console.log(`[useSheetData] 件数: 売却=${sellArr.length}件, 購入=${buyArr.length}件`)
+    const sellArr = Array.isArray(json.sellCases) ? json.sellCases : []
+    const buyArr  = Array.isArray(json.buyCases)  ? json.buyCases  : []
 
-      const sellFromApi = sellArr.length > 0
-      const buyFromApi  = buyArr.length > 0
-      const isRealData  = sellFromApi || buyFromApi
+    console.log(`[useSheetData] 件数: 売却=${sellArr.length}件, 購入=${buyArr.length}件`)
 
-      let dataSource: SheetData['dataSource'] = isRealData ? 'real' : 'mock_fallback'
-      let errorMessage: string | undefined
+    const sellFromApi = sellArr.length > 0
+    const buyFromApi  = buyArr.length > 0
+    const isRealData  = sellFromApi || buyFromApi
 
-      if (!isRealData) {
-        const reasons: string[] = []
-        if (sellError) reasons.push(`売却: ${sellError}`)
-        else           reasons.push('売却: 0件')
-        if (buyError)  reasons.push(`購入: ${buyError}`)
-        else           reasons.push('購入: 0件')
-        errorMessage = reasons.join(' / ')
-        console.warn('[useSheetData] 実データなし → デモデータ表示:', errorMessage)
-      }
+    let dataSource: SheetData['dataSource'] = isRealData ? 'real' : 'mock_fallback'
+    let errorMessage: string | undefined
 
-      const sells = sellFromApi ? sellArr.map((r, i) => mapSellCase(r, i)) : mockSellCases
-      const buys  = buyFromApi  ? buyArr.map((r, i)  => mapBuyCase(r, i))  : mockBuyCases
+    if (!isRealData) {
+      const reasons: string[] = []
+      if (sellError) reasons.push(`売却: ${sellError}`)
+      else           reasons.push('売却: 0件')
+      if (buyError)  reasons.push(`購入: ${buyError}`)
+      else           reasons.push('購入: 0件')
+      errorMessage = reasons.join(' / ')
+      console.warn('[useSheetData] 実データなし → デモデータ表示:', errorMessage)
+    }
 
-      const inqMap = mapInquiryStats(json.sellInquiries ?? {}, json.buyInquiries ?? {})
+    const sells = sellFromApi ? sellArr.map((r, i) => mapSellCase(r, i)) : mockSellCases
+    const buys  = buyFromApi  ? buyArr.map((r, i)  => mapBuyCase(r, i))  : mockBuyCases
+    const inqMap = mapInquiryStats(json.sellInquiries ?? {}, json.buyInquiries ?? {})
+    const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
+    const realStats = salesRows.length > 0 ? mapSalesSummary(salesRows) : null
+    const monthlyStats = realStats && realStats.length > 0
+      ? mergeInquiries(realStats, inqMap)
+      : mergeInquiries(mockMonthlyStats, inqMap)
 
-      const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
-      const realStats = salesRows.length > 0 ? mapSalesSummary(salesRows) : null
-      const monthlyStats = realStats && realStats.length > 0
-        ? mergeInquiries(realStats, inqMap)
-        : mergeInquiries(mockMonthlyStats, inqMap)
+    const result: SheetData = {
+      sellCases: sells, buyCases: buys, monthlyStats,
+      inquirySummary: inqMap, loaded: true, dataSource, errorMessage,
+    }
 
-      const result: SheetData = {
-        sellCases:      sells,
-        buyCases:       buys,
-        monthlyStats,
-        inquirySummary: inqMap,
-        loaded:         true,
-        dataSource,
-        errorMessage,
-      }
+    // ✅ 成功時のみキャッシュを更新
+    cache     = result
+    cacheTime = Date.now()
+    console.log(`[useSheetData] キャッシュ保存（TTL: ${CACHE_TTL_MS / 1000}秒）`)
+    saveToSession(result)
+    return result
 
-      // モジュールキャッシュに保存（TTL 5分）
-      cache = result
-      cacheExpiresAt = Date.now() + CACHE_TTL_MS
-      console.log(`[useSheetData] モジュールキャッシュ保存（TTL: ${CACHE_TTL_MS / 1000}秒）`)
-
-      saveToSession(result)
-      return result
-    })
-    .catch((err): SheetData => {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error('[useSheetData] fetch失敗:', message)
-      clearSheetCache()
-      return { ...FALLBACK, loaded: true, dataSource: 'error', errorMessage: message }
-    })
-    .finally(() => {
-      pendingFetch = null
-    })
-
-  return pendingFetch
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[useSheetData] fetch失敗:', message)
+    // ❌ キャッシュはクリアしない（エラーのたびにクリアすると429ループになる）
+    // 既存キャッシュがあればそれを返し、なければエラー表示
+    if (cache) {
+      console.warn('[useSheetData] エラー → 既存キャッシュを継続使用')
+      return cache
+    }
+    return { ...FALLBACK, loaded: true, dataSource: 'error', errorMessage: message }
+  }
 }
 
+// ── フック ────────────────────────────────────────────────────────────────
 export function useSheetData(): SheetData {
   const [data, setData] = useState<SheetData>(() => {
-    // 初期値: キャッシュ有効 → キャッシュ、なければ sessionStorage、なければ FALLBACK
-    if (isCacheValid()) return cache!
+    if (isFresh()) return cache!
     return loadFromSession() ?? FALLBACK
   })
 
   useEffect(() => {
-    // キャッシュが有効ならAPIを呼ばずに表示を更新して終了
-    if (isCacheValid()) {
+    // ① キャッシュが新鮮なら fetch 不要
+    if (isFresh()) {
+      const remaining = Math.round((CACHE_TTL_MS - (Date.now() - cacheTime)) / 1000)
+      console.log(`[useSheetData] キャッシュHIT（残り${remaining}秒）→ APIリクエストなし`)
       setData(cache!)
       return
     }
 
-    // sessionStorage に有効データがあれば即時表示（ちらつき防止）
+    // ② sessionStorage に有効データがあれば即時表示（ちらつき防止）
     const sessionData = loadFromSession()
-    if (sessionData && !cache) {
-      setData(sessionData)
-    }
+    if (sessionData) setData(sessionData)
 
-    // fetchを開始（キャッシュ有効なら内部で即座に返る）
-    startSheetFetch().then(result => setData(result))
+    // ③ fetch（進行中のものがあれば使い回す）
+    if (!pendingFetch) {
+      pendingFetch = fetchSheetData().finally(() => { pendingFetch = null })
+    }
+    pendingFetch.then(result => setData(result))
   }, [])
 
   return data
