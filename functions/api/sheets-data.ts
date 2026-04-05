@@ -20,10 +20,11 @@
  * GOOGLE_SHEETS_SELL_INQ_RANGE 売却問い合わせ範囲 (任意)
  * GOOGLE_SHEETS_BUY_INQ_RANGE  購入問い合わせ範囲 (任意)
  * GOOGLE_SHEETS_SUMMARY_RANGE  売上集計範囲   (任意)
+ * GOOGLE_SHEETS_PAYMENT_RANGE  入金確認タブ範囲 (任意)
  */
 
 const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
-const CACHE_KEY = 'sheets:data:v1'
+const CACHE_KEY = 'sheets:data:v2'  // paymentRecords追加でv2に変更
 const CACHE_TTL_SECONDS = 300 // 5分
 
 interface KVNamespace {
@@ -152,11 +153,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   if (!sheetsId || !apiKey) {
     const errMsg = 'GOOGLE_SHEETS_ID または GOOGLE_SHEETS_API_KEY が未設定です'
     return Response.json({
-      sellCases:     { error: errMsg },
-      buyCases:      { error: errMsg },
-      sellInquiries: {},
-      buyInquiries:  {},
-      salesSummary:  [],
+      sellCases:      { error: errMsg },
+      buyCases:       { error: errMsg },
+      sellInquiries:  {},
+      buyInquiries:   {},
+      salesSummary:   [],
+      paymentRecords: [],
     }, { headers: { 'X-Cache': 'MISS', 'X-Sheets-Requests': '0', 'Cache-Control': 'no-store' } })
   }
 
@@ -169,6 +171,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     getConfig(kv, env, 'GOOGLE_SHEETS_PAYMENT_RANGE'),
   ])
 
+  // 環境変数の読み込み状況をログ出力（デバッグ用）
+  console.log('[sheets-data] 環境変数確認:',
+    `PAYMENT_RANGE="${paymentRange || '未設定'}"`,
+    `SUMMARY_RANGE="${summaryRange || '未設定'}"`,
+    `SELL_INQ_RANGE="${sellInqRange || '未設定'}"`,
+  )
+
   const effectiveSellRange = sellRange || '【売却】案件管理!A1:Z500'
   const effectiveBuyRange  = buyRange  || '【購入】案件管理!A1:Z500'
 
@@ -180,6 +189,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   if (paymentRange) allRanges.push(paymentRange)
 
   console.log(`[sheets-data] batchGet: ${allRanges.length}レンジ → Sheets APIリクエスト1回`)
+  console.log('[sheets-data] リクエストレンジ一覧:', allRanges)
+  console.log(`[sheets-data] 入金確認レンジ: ${paymentRange ? `"${paymentRange}" (index=${allRanges.indexOf(paymentRange)})` : '未設定（スキップ）'}`)
 
   const batchResult = await batchGetRanges(sheetsId, apiKey, allRanges)
 
@@ -187,11 +198,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     // batchGet 自体がエラー（429リトライ後も失敗）
     console.error('[sheets-data] batchGetエラー:', batchResult.error)
     return Response.json({
-      sellCases:     { error: batchResult.error },
-      buyCases:      { error: batchResult.error },
-      sellInquiries: {},
-      buyInquiries:  {},
-      salesSummary:  [],
+      sellCases:      { error: batchResult.error },
+      buyCases:       { error: batchResult.error },
+      sellInquiries:  {},
+      buyInquiries:   {},
+      salesSummary:   [],
+      paymentRecords: [],
     }, { headers: { 'X-Cache': 'MISS', 'X-Sheets-Requests': '1', 'Cache-Control': 'no-store' } })
   }
 
@@ -212,8 +224,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const paymentRecords = valuesToRows(paymentValues)
 
   console.log(
-    `[sheets-data] 取得完了: 売却=${sellCases.length}件, 購入=${buyCases.length}件, 入金=${paymentRecords.length}件`,
+    `[sheets-data] 取得完了: 売却=${sellCases.length}件, 購入=${buyCases.length}件, ` +
+    `入金=${paymentRecords.length}件 (paymentRange設定=${!!paymentRange})`,
   )
+  if (paymentRecords.length > 0) {
+    console.log('[sheets-data] paymentRecords先頭2件:', JSON.stringify(paymentRecords.slice(0, 2)))
+  }
 
   const result = { sellCases, buyCases, sellInquiries, buyInquiries, salesSummary, paymentRecords }
 
