@@ -62,9 +62,13 @@ export default function SalesPage() {
   }))
 
   const totalRevenue  = mergedStats.reduce((s, m) => s + (m.revenue ?? 0), 0)
-  const current       = mergedStats[mergedStats.length - 1]
-  const prev          = mergedStats[mergedStats.length - 2]
-  const revenueTrend  = prev?.revenue > 0
+  // 現在月キー（例: "2026年4月"）で一致するエントリを探し、なければ末尾を使用
+  const todayMonthKey = `${new Date().getFullYear()}年${new Date().getMonth() + 1}月`
+  const currentIdx    = mergedStats.findIndex(m => m.month === todayMonthKey)
+  const current       = currentIdx >= 0 ? mergedStats[currentIdx] : mergedStats[mergedStats.length - 1]
+  const prevIdx       = currentIdx >= 0 ? currentIdx - 1 : mergedStats.length - 2
+  const prev          = prevIdx >= 0 ? mergedStats[prevIdx] : undefined
+  const revenueTrend  = prev && prev.revenue > 0
     ? Math.round(((current.revenue - prev.revenue) / prev.revenue) * 100)
     : 0
   const trendUp  = revenueTrend >= 0

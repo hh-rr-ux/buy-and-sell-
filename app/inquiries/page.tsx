@@ -5,6 +5,19 @@ import { TrendingUp, TrendingDown, MessageCircle, Bell, RefreshCw } from 'lucide
 import { chatworkRooms as mockChatworkRooms } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
 
+/** Chatwork の [info][title]...[/title]...[/info] タグを整形して表示用テキストに変換 */
+function parseChatworkMessage(text: string): string {
+  let result = text
+    // [info][title]TITLE[/title]BODY[/info] → 「TITLE: BODY」
+    .replace(
+      /\[info\]\[title\]([\s\S]*?)\[\/title\]([\s\S]*?)\[\/info\]/g,
+      (_, title, body) => `${title.trim()}: ${body.trim()}`
+    )
+    // 残った [tag] パターンをすべて除去
+    .replace(/\[[^\]]+\]/g, '')
+  return result.trim()
+}
+
 interface ChatworkRoom {
   roomId: string
   name: string
@@ -67,6 +80,7 @@ export default function InquiriesPage() {
     : 0
   const trendUp = trend >= 0
 
+  const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set())
   const [chatworkRooms, setChatworkRooms] = useState<ChatworkRoom[]>(mockChatworkRooms)
   const [chatworkLoading, setChatworkLoading] = useState(true)
   const [chatworkError, setChatworkError] = useState('')
@@ -132,7 +146,7 @@ export default function InquiriesPage() {
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
               <p className="text-white/50 text-xs mb-1">今月成約数（LINE経由）</p>
               <p className="text-white text-3xl font-black tracking-tight">
-                {thisMonthData?.closedSell ?? 0 + (thisMonthData?.closedBuy ?? 0)}<span className="text-lg font-medium text-white/60 ml-1">件</span>
+                {(thisMonthData?.closedSell ?? 0) + (thisMonthData?.closedBuy ?? 0)}<span className="text-lg font-medium text-white/60 ml-1">件</span>
               </p>
               <p className="text-white/40 text-xs mt-2">売却 + 購入</p>
             </div>
@@ -204,7 +218,10 @@ export default function InquiriesPage() {
             <>
               <p className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider mb-2">お客様・通知</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                {notificationRooms.map(room => (
+                {notificationRooms.map(room => {
+                  const isExpanded = expandedRooms.has(room.roomId)
+                  const parsed = parseChatworkMessage(room.latestMessage)
+                  return (
                   <div key={room.roomId} className="rounded-xl border border-teal-200 bg-teal-50 p-4 flex flex-col gap-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -222,12 +239,27 @@ export default function InquiriesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed bg-white rounded-lg px-3 py-2 border border-gray-100">
-                      {room.latestMessage}
-                    </p>
+                    <div className="bg-white rounded-lg px-3 py-2 border border-gray-100">
+                      <p className={`text-xs text-gray-600 leading-relaxed whitespace-pre-line ${isExpanded ? '' : 'line-clamp-2'}`}>
+                        {parsed}
+                      </p>
+                      {parsed.length > 80 && (
+                        <button
+                          onClick={() => setExpandedRooms(prev => {
+                            const next = new Set(prev)
+                            isExpanded ? next.delete(room.roomId) : next.add(room.roomId)
+                            return next
+                          })}
+                          className="text-[10px] text-teal-600 font-semibold mt-1 hover:underline"
+                        >
+                          {isExpanded ? '閉じる' : 'もっと見る'}
+                        </button>
+                      )}
+                    </div>
                     <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </>
           )}
@@ -237,7 +269,10 @@ export default function InquiriesPage() {
             <>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">その他</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {otherRooms.map(room => (
+                {otherRooms.map(room => {
+                  const isExpanded = expandedRooms.has(room.roomId)
+                  const parsed = parseChatworkMessage(room.latestMessage)
+                  return (
                   <div key={room.roomId} className="rounded-xl border border-gray-100 bg-gray-50 p-4 flex flex-col gap-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -255,12 +290,27 @@ export default function InquiriesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed bg-white rounded-lg px-3 py-2 border border-gray-100">
-                      {room.latestMessage}
-                    </p>
+                    <div className="bg-white rounded-lg px-3 py-2 border border-gray-100">
+                      <p className={`text-xs text-gray-600 leading-relaxed whitespace-pre-line ${isExpanded ? '' : 'line-clamp-2'}`}>
+                        {parsed}
+                      </p>
+                      {parsed.length > 80 && (
+                        <button
+                          onClick={() => setExpandedRooms(prev => {
+                            const next = new Set(prev)
+                            isExpanded ? next.delete(room.roomId) : next.add(room.roomId)
+                            return next
+                          })}
+                          className="text-[10px] text-gray-500 font-semibold mt-1 hover:underline"
+                        >
+                          {isExpanded ? '閉じる' : 'もっと見る'}
+                        </button>
+                      )}
+                    </div>
                     <p className="text-[10px] text-gray-400 text-right">{room.latestTime}</p>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </>
           )}

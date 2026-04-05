@@ -102,7 +102,7 @@ export default function AnalyticsPage() {
   const totalClosed = monthlyStats.reduce((sum, m) => sum + m.closedSell + m.closedBuy, 0)
   const totalInquiries = monthlyStats.reduce((sum, m) => sum + m.newInquiries, 0)
   const totalRevenue = monthlyStats.reduce((sum, m) => sum + m.revenue, 0)
-  const overallConversionRate = Math.round((totalClosed / totalInquiries) * 100)
+  const overallConversionRate = totalInquiries > 0 ? Math.round((totalClosed / totalInquiries) * 100) : 0
 
   // 成約率ファネル（実データから累積計算）
   const sellStageOrder = ['問い合わせ', '査定', '媒介契約', '販売活動', '売買契約', '決済']
@@ -264,7 +264,7 @@ export default function AnalyticsPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Target size={16} className="text-indigo-400" />
-          <h2 className="text-base font-semibold text-gray-800">成約率ファネル（過去6ヶ月累計）</h2>
+          <h2 className="text-base font-semibold text-gray-800">成約率ファネル（全期間累計）</h2>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           {conversionFunnelData.map((item, i) => (
@@ -346,7 +346,7 @@ function AreaAnalysisSection() {
     if (!sellAreaMap[area]) sellAreaMap[area] = { count: 0, totalFee: 0, totalPrice: 0 }
     sellAreaMap[area].count++
     sellAreaMap[area].totalFee += c.brokerageFee
-    sellAreaMap[area].totalPrice += c.askingPrice
+    sellAreaMap[area].totalPrice += c.contractPrice || c.askingPrice
   }
   const sellAreaData = Object.entries(sellAreaMap)
     .map(([area, v]) => ({ area, ...v }))
