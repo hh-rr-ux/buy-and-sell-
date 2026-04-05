@@ -24,7 +24,7 @@
  */
 
 const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
-const CACHE_KEY = 'sheets:data:v5'  // 環境変数修正後のキャッシュ強制クリアのためv5に変更
+const CACHE_KEY = 'sheets:data:v6'  // paymentRecords未取得のキャッシュ強制クリアのためv6に変更
 const CACHE_TTL_SECONDS = 300 // 5分
 
 interface KVNamespace {
