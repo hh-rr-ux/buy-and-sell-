@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Settings, CheckCircle2, XCircle, Calendar,
   TrendingUp, Users, Star, MessageSquare, AlertCircle,
 } from 'lucide-react'
 import { getEnvStatus } from '@/lib/config'
 import {
-  sellCases, buyCases, STAFF_LIST,
+  STAFF_LIST,
   mockStaffEvaluations, type Staff, type EvalCriterion,
 } from '@/lib/mockData'
+import { useSheetData } from '@/lib/useSheetData'
 import SettingsPinGate, { SettingsLogoutButton } from '@/components/SettingsPinGate'
 
 // ─── API設定タブ ──────────────────────────────────────────────────────
@@ -107,7 +108,13 @@ function ApiTab() {
 // ─── 担当者別売上・リソースタブ ───────────────────────────────────────
 
 function ResourceTab() {
-  // 担当者別集計（mockデータは不変なので useMemo でキャッシュ）
+  const [mounted, setMounted] = useState(false)
+  const { sellCases, buyCases } = useSheetData()
+
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return <div className="h-64 bg-gray-50 rounded-lg animate-pulse mt-4" />
+
+  // 担当者別集計
   const staffStats = useMemo(() => STAFF_LIST.map(name => {
     const sells = sellCases.filter(c => c.staff === name)
     const buys  = buyCases.filter(c => c.staff === name)
