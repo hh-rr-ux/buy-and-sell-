@@ -12,8 +12,8 @@
  *   'error'         → fetch自体が失敗（ネットワークエラー等）
  *
  * ── リクエスト最適化 ──
- * 1. モジュールキャッシュ: SPA遷移では再fetchしない
- * 2. sessionStorage: リロード後も前回データを即時表示
+ * 1. モジュールキャッシュ + TTL: 5分以内のSPA遷移では再fetchしない
+ * 2. sessionStorage + TTL: リロード後も5分以内なら前回データを即時表示
  * 3. pendingFetch: 複数コンポーネントが同時にmountしても /api/sheets-data は1回だけ呼ぶ
  */
 
@@ -38,16 +38,22 @@ export interface SheetData {
   errorMessage?:  string
 }
 
-const SESSION_KEY = 'bns_sheet_data_v20'
+const SESSION_KEY = 'bns_sheet_data_v22'
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5分
 
 // ── モジュールレベルのキャッシュ・状態（全コンポーネント共有） ──
 let cache: SheetData | null = null
+let cacheExpiresAt = 0
 /**
  * 進行中のfetch Promise。
  * 複数コンポーネントが同時にuseSheetData()を呼んでも
  * /api/sheets-data へのリクエストは1回だけになる。
  */
 let pendingFetch: Promise<SheetData> | null = null
+
+function isCacheValid(): boolean {
+  return cache !== null && Date.now() < cacheExpiresAt
+}
 
 const FALLBACK: SheetData = {
   sellCases:      mockSellCases,
@@ -58,23 +64,36 @@ const FALLBACK: SheetData = {
   dataSource:     'mock_fallback',
 }
 
+// sessionStorage に保存する際は fetchedAt を付加
+type StoredSheetData = SheetData & { fetchedAt?: number }
+
 function loadFromSession(): SheetData | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as SheetData
-    return parsed.loaded ? parsed : null
+    const parsed = JSON.parse(raw) as StoredSheetData
+    if (!parsed.loaded) return null
+    // TTLチェック: fetchedAt がない or 期限切れなら使わない
+    if (!parsed.fetchedAt || Date.now() - parsed.fetchedAt > CACHE_TTL_MS) {
+      sessionStorage.removeItem(SESSION_KEY)
+      return null
+    }
+    return parsed
   } catch { return null }
 }
 
 function saveToSession(data: SheetData) {
   if (typeof window === 'undefined') return
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(data)) } catch {}
+  try {
+    const stored: StoredSheetData = { ...data, fetchedAt: Date.now() }
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
+  } catch {}
 }
 
 export function clearSheetCache() {
   cache = null
+  cacheExpiresAt = 0
   if (typeof window !== 'undefined') {
     try { sessionStorage.removeItem(SESSION_KEY) } catch {}
   }
@@ -99,19 +118,28 @@ function mergeInquiries(
 
 /**
  * /api/sheets-data を fetch して SheetData を返す。
- * 既に進行中の fetch がある場合は同じ Promise を返す（重複排除）。
+ * - モジュールキャッシュが5分以内なら即座にキャッシュを返す（fetch不要）
+ * - 既に進行中の fetch がある場合は同じ Promise を返す（重複排除）
  */
 function startSheetFetch(): Promise<SheetData> {
+  // ① モジュールキャッシュが有効なら fetch しない（SPA遷移の最適化）
+  if (isCacheValid()) {
+    const remainSec = Math.round((cacheExpiresAt - Date.now()) / 1000)
+    console.log(`[useSheetData] モジュールキャッシュHIT（残り${remainSec}秒）→ APIリクエストなし`)
+    return Promise.resolve(cache!)
+  }
+
+  // ② 同じ fetch が進行中なら使い回す（同一ページ内の複数コンポーネント対策）
   if (pendingFetch) {
     console.log('[useSheetData] 重複排除: 進行中のfetchを再利用（APIリクエストは発生しない）')
     return pendingFetch
   }
 
+  // ③ 新規 fetch
   console.log('[useSheetData] /api/sheets-data へリクエスト開始 (#1)')
 
   pendingFetch = fetch('/api/sheets-data')
     .then(async r => {
-      // レスポンスヘッダーでキャッシュ状況を確認
       const cacheStatus = r.headers.get('X-Cache') ?? '不明'
       const sheetsReqs  = r.headers.get('X-Sheets-Requests') ?? '?'
       console.log(
@@ -188,7 +216,12 @@ function startSheetFetch(): Promise<SheetData> {
         dataSource,
         errorMessage,
       }
+
+      // モジュールキャッシュに保存（TTL 5分）
       cache = result
+      cacheExpiresAt = Date.now() + CACHE_TTL_MS
+      console.log(`[useSheetData] モジュールキャッシュ保存（TTL: ${CACHE_TTL_MS / 1000}秒）`)
+
       saveToSession(result)
       return result
     })
@@ -199,9 +232,7 @@ function startSheetFetch(): Promise<SheetData> {
       return { ...FALLBACK, loaded: true, dataSource: 'error', errorMessage: message }
     })
     .finally(() => {
-      // Promise完了後はクリア（次回ページロード時に再fetchできるように）
       pendingFetch = null
-      console.log('[useSheetData] fetch完了（pendingFetchをクリア）')
     })
 
   return pendingFetch
@@ -209,17 +240,25 @@ function startSheetFetch(): Promise<SheetData> {
 
 export function useSheetData(): SheetData {
   const [data, setData] = useState<SheetData>(() => {
-    return cache ?? loadFromSession() ?? FALLBACK
+    // 初期値: キャッシュ有効 → キャッシュ、なければ sessionStorage、なければ FALLBACK
+    if (isCacheValid()) return cache!
+    return loadFromSession() ?? FALLBACK
   })
 
   useEffect(() => {
+    // キャッシュが有効ならAPIを呼ばずに表示を更新して終了
+    if (isCacheValid()) {
+      setData(cache!)
+      return
+    }
+
     // sessionStorage に有効データがあれば即時表示（ちらつき防止）
     const sessionData = loadFromSession()
     if (sessionData && !cache) {
       setData(sessionData)
     }
 
-    // 重複排除fetchを使用（複数コンポーネントでmountされても1回しかAPIを叩かない）
+    // fetchを開始（キャッシュ有効なら内部で即座に返る）
     startSheetFetch().then(result => setData(result))
   }, [])
 
