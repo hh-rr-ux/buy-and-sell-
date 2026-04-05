@@ -150,11 +150,25 @@ export function useSheetData(): SheetData {
         const paymentByMonth = mapPaymentRecords(paymentRows)
 
         // JST (UTC+9) 基準で今月・先月キーを生成
-        const jstNow      = new Date(Date.now() + 9 * 60 * 60 * 1000)
-        const thisMonth   = jstNow.toISOString().slice(0, 7)  // "2026-04"
+        const jstNow       = new Date(Date.now() + 9 * 60 * 60 * 1000)
+        const thisMonth    = jstNow.toISOString().slice(0, 7)  // "2026-04"
         const jstLastMonth = new Date(jstNow)
         jstLastMonth.setMonth(jstLastMonth.getMonth() - 1)
-        const lastMonth   = jstLastMonth.toISOString().slice(0, 7)  // "2026-03"
+        const lastMonth    = jstLastMonth.toISOString().slice(0, 7)  // "2026-03"
+
+        // salesSummary の「最終行 = 今月、その前 = 先月」として売上を補完
+        // （paymentRecords が取得できない場合のフォールバック）
+        const TOTAL_COL = '↓【全体】発生月で集計'
+        const parseSalesRev = (row: Record<string, string>): number =>
+          Math.floor(parseFloat((row[TOTAL_COL] ?? '').replace(/,/g, '')) || 0)
+        const salesThisMonth = salesRows.length > 0 ? parseSalesRev(salesRows[salesRows.length - 1]) : 0
+        const salesLastMonth = salesRows.length > 1 ? parseSalesRev(salesRows[salesRows.length - 2]) : 0
+
+        console.log(`[useSheetData] salesSummary売上: 今月=${salesThisMonth.toLocaleString()}円 先月=${salesLastMonth.toLocaleString()}円 (行数=${salesRows.length} 列="${TOTAL_COL}")`)
+
+        // paymentByMonth に salesSummary データを補完（入金確認タブが空の場合）
+        if (salesThisMonth > 0 && !paymentByMonth[thisMonth]) paymentByMonth[thisMonth] = salesThisMonth
+        if (salesLastMonth > 0 && !paymentByMonth[lastMonth]) paymentByMonth[lastMonth] = salesLastMonth
 
         const confirmedRevenue = paymentByMonth[thisMonth] ?? 0
         const lastMonthRevenue = paymentByMonth[lastMonth] ?? 0

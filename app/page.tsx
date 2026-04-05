@@ -286,7 +286,7 @@ export default function DashboardPage() {
                 先月比 {paymentTrendUp ? '+' : ''}{paymentTrend}%
               </div>
               {confirmedRevenue > 0 && (
-                <p className="text-white/30 text-[10px] mt-0.5">入金確認タブより</p>
+                <p className="text-white/30 text-[10px] mt-0.5">売上集計タブより</p>
               )}
             </div>
 
