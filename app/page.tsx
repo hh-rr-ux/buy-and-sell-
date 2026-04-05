@@ -114,11 +114,12 @@ export default function DashboardPage() {
   const thisMonthKey = jstNow.toISOString().slice(0, 7)
   const jstLast      = new Date(jstNow); jstLast.setMonth(jstLast.getMonth() - 1)
   const lastMonthKey = jstLast.toISOString().slice(0, 7)
-  const pmThisMonth  = paymentByMonth[thisMonthKey] ?? 0
-  const pmLastMonth  = paymentByMonth[lastMonthKey] ?? 0
-  const paymentTrend = pmLastMonth > 0
+  const pmThisMonth    = paymentByMonth[thisMonthKey] ?? 0
+  const pmLastMonth    = paymentByMonth[lastMonthKey] ?? 0
+  const hasLastMonth   = pmLastMonth > 0
+  const paymentTrend   = hasLastMonth
     ? Math.round(((pmThisMonth - pmLastMonth) / pmLastMonth) * 100)
-    : (confirmedRevenue > 0 ? kpis.revenueTrend : 0)
+    : 0
   const paymentTrendUp = paymentTrend >= 0
 
   // ── 決済間近案件（修正2・3: 価格表示 + 物件名ペアリング） ──────────────────────
@@ -281,9 +282,17 @@ export default function DashboardPage() {
               <p className="text-white text-3xl font-black tracking-tight">
                 {confirmedRevenue > 0 ? formatPrice(confirmedRevenue) : formatPrice(kpis.monthlyRevenue)}
               </p>
-              <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${paymentTrendUp ? 'text-green-400' : 'text-red-400'}`}>
-                {paymentTrendUp ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
-                先月比 {paymentTrendUp ? '+' : ''}{paymentTrend}%
+              <div className="flex items-center gap-1 mt-2 text-xs font-semibold text-white/40">
+                {hasLastMonth ? (
+                  <>
+                    {paymentTrendUp ? <TrendingUp size={13} className="text-green-400"/> : <TrendingDown size={13} className="text-red-400"/>}
+                    <span className={paymentTrendUp ? 'text-green-400' : 'text-red-400'}>
+                      先月比 {paymentTrendUp ? '+' : ''}{paymentTrend}%
+                    </span>
+                  </>
+                ) : (
+                  <span>先月比 —</span>
+                )}
               </div>
               {(sellRevenue > 0 || buyRevenue > 0) && (
                 <p className="text-white/40 text-[10px] mt-1">
