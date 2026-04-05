@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-static'
 
+import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, Users, MapPin } from 'lucide-react'
 import { useSheetData } from '@/lib/useSheetData'
 
@@ -125,7 +126,10 @@ export default function SalesPage() {
   const activeSell      = sellCases.filter(c => c.stage !== '決済' && c.stage !== '相談終了').length
   const activeBuy       = buyCases.filter(c => c.stage !== '決済' && c.stage !== '相談終了').length
 
-  const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-')
+  const [today, setToday] = useState('')
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-'))
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
