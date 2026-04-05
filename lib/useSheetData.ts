@@ -140,19 +140,6 @@ export function useSheetData(): SheetData {
         const buys  = buyFromApi  ? buyArr.map((r, i)  => mapBuyCase(r, i))  : mockBuyCases
         const inqMap = mapInquiryStats(json.sellInquiries ?? {}, json.buyInquiries ?? {})
         const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
-
-        // ── salesSummary 構造調査ログ（全列ダンプ） ──
-        console.group('[salesSummary] 構造調査')
-        console.log('総行数:', salesRows.length)
-        if (salesRows.length > 0) {
-          console.log('【列名一覧】', JSON.stringify(Object.keys(salesRows[0])))
-        }
-        // 先頭10行の全列を出力（行と月の対応を特定するため）
-        salesRows.slice(0, 10).forEach((row, i) => {
-          console.log(`【行${i} 全列】`, JSON.stringify(row))
-        })
-        console.groupEnd()
-
         const realStats = salesRows.length > 0 ? mapSalesSummary(salesRows) : null
         const monthlyStats = realStats && realStats.length > 0
           ? mergeInquiries(realStats, inqMap)
@@ -169,15 +156,31 @@ export function useSheetData(): SheetData {
         jstLastMonth.setMonth(jstLastMonth.getMonth() - 1)
         const lastMonth    = jstLastMonth.toISOString().slice(0, 7)  // "2026-03"
 
-        // salesSummary の「最終行 = 今月、その前 = 先月」として売上を補完
+        // salesSummary の月列から今月・先月の行を特定して売上を取得
         // （paymentRecords が取得できない場合のフォールバック）
-        const TOTAL_COL = '↓【全体】発生月で集計'
-        const parseSalesRev = (row: Record<string, string>): number =>
-          Math.floor(parseFloat((row[TOTAL_COL] ?? '').replace(/,/g, '')) || 0)
-        const salesThisMonth = salesRows.length > 0 ? parseSalesRev(salesRows[salesRows.length - 1]) : 0
-        const salesLastMonth = salesRows.length > 1 ? parseSalesRev(salesRows[salesRows.length - 2]) : 0
+        const TOTAL_COL   = '↓【全体】発生月で集計'
+        const MONTH_KEYS  = ['_月', '月', '年月', '対象月', '発生月', '売上対象月']
+        const getMonthVal = (row: Record<string, string>): string => {
+          for (const k of MONTH_KEYS) { if (row[k]) return row[k] }
+          return ''
+        }
+        // "26年4月" → "2026-04" / "2026年4月" → "2026-04"
+        const toMonthKey = (m: string): string => {
+          const s = m.match(/^(\d{2})年(\d{1,2})月$/);  if (s) return `20${s[1]}-${s[2].padStart(2, '0')}`
+          const f = m.match(/^(20\d{2})年(\d{1,2})月$/); if (f) return `${f[1]}-${f[2].padStart(2, '0')}`
+          if (/^\d{4}-\d{2}$/.test(m)) return m
+          return ''
+        }
+        const parseSalesRev = (row: Record<string, string> | undefined): number =>
+          row ? Math.floor(parseFloat((row[TOTAL_COL] ?? '').replace(/,/g, '')) || 0) : 0
 
-        console.log(`[useSheetData] salesSummary売上: 今月=${salesThisMonth.toLocaleString()}円 先月=${salesLastMonth.toLocaleString()}円 (行数=${salesRows.length} 列="${TOTAL_COL}")`)
+        const salesThisMonthRow = salesRows.find(r => toMonthKey(getMonthVal(r)) === thisMonth)
+        const salesLastMonthRow = salesRows.find(r => toMonthKey(getMonthVal(r)) === lastMonth)
+        const salesThisMonth    = parseSalesRev(salesThisMonthRow)
+        const salesLastMonth    = parseSalesRev(salesLastMonthRow)
+
+        console.log(`[useSheetData] salesSummary: 今月(${thisMonth})=${salesThisMonth.toLocaleString()}円 先月(${lastMonth})=${salesLastMonth.toLocaleString()}円`)
+        console.log(`[useSheetData] salesSummary: 今月行月名="${salesThisMonthRow ? getMonthVal(salesThisMonthRow) : '未発見'}" 全月数=${salesRows.length}`)
 
         // paymentByMonth に salesSummary データを補完（入金確認タブが空の場合）
         if (salesThisMonth > 0 && !paymentByMonth[thisMonth]) paymentByMonth[thisMonth] = salesThisMonth
@@ -186,9 +189,7 @@ export function useSheetData(): SheetData {
         const confirmedRevenue = paymentByMonth[thisMonth] ?? 0
         const lastMonthRevenue = paymentByMonth[lastMonth] ?? 0
 
-        console.log(`[useSheetData] 入金確認 判定キー: 今月=${thisMonth} 先月=${lastMonth}`)
         console.log(`[useSheetData] 入金確認 今月=${confirmedRevenue.toLocaleString()}円 先月=${lastMonthRevenue.toLocaleString()}円`)
-        console.log('[useSheetData] 入金確認 paymentByMonth全月:', paymentByMonth)
 
         const now = Date.now()
         const result: SheetData = {

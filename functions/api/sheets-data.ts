@@ -105,6 +105,22 @@ function valuesToRows(values: string[][]): Record<string, string>[] {
   })
 }
 
+/**
+ * 売上集計シート専用: A列（月名）のヘッダーが空欄の場合に '_月' キーを補完する。
+ * A列に「25年10月」のような月名がある前提。
+ */
+function summaryValuesToRows(values: string[][]): Record<string, string>[] {
+  if (values.length < 2) return []
+  const rawHeaders = values[0].map(h => h.trim())
+  // A列（index 0）のヘッダーが空なら '_月' を補完
+  const headers = rawHeaders.map((h, i) => h || (i === 0 ? '_月' : ''))
+  return values.slice(1).map(row => {
+    const obj: Record<string, string> = {}
+    headers.forEach((h, i) => { if (h) obj[h] = row[i]?.trim() ?? '' })
+    return obj
+  })
+}
+
 /** Record<string, string>[] → 月別問い合わせデータ形式に変換 */
 function rowsToInquiryData(
   rows: Record<string, string>[],
@@ -186,15 +202,24 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const effectiveSellRange = sellRange || '【売却】案件管理!A1:Z500'
   const effectiveBuyRange  = buyRange  || '【購入】案件管理!A1:Z500'
 
-  // ── paymentRange は KV よりも env を優先（KV に空文字が混入するケースを回避） ──
+  // paymentRange は KV よりも env を優先（KV に空文字が混入するケースを回避）
   const effectivePaymentRange = env.GOOGLE_SHEETS_PAYMENT_RANGE || paymentRange
+
+  // 売上集計: 月名列（A列）を確実に含めるため、開始列を強制的にA列に変換
+  // 例: "売上集計!D3:I50" → "売上集計!A3:I50"
+  const effectiveSummaryRange = summaryRange
+    ? summaryRange.replace(/!([A-Z]+)(\d+):/, '!A$2:')
+    : ''
+  if (effectiveSummaryRange !== summaryRange && effectiveSummaryRange) {
+    console.log(`[sheets-data] summaryRange修正: "${summaryRange}" → "${effectiveSummaryRange}"`)
+  }
 
   // ── batchGet: 全レンジを 1 回の API リクエストで取得 ──
   const allRanges: string[] = [effectiveSellRange, effectiveBuyRange]
-  if (sellInqRange)          allRanges.push(sellInqRange)
-  if (buyInqRange)           allRanges.push(buyInqRange)
-  if (summaryRange)          allRanges.push(summaryRange)
-  if (effectivePaymentRange) allRanges.push(effectivePaymentRange)
+  if (sellInqRange)           allRanges.push(sellInqRange)
+  if (buyInqRange)            allRanges.push(buyInqRange)
+  if (effectiveSummaryRange)  allRanges.push(effectiveSummaryRange)
+  if (effectivePaymentRange)  allRanges.push(effectivePaymentRange)
 
   console.log(`[sheets-data] batchGet: ${allRanges.length}レンジ → Sheets APIリクエスト1回`)
   console.log('[sheets-data] リクエストレンジ一覧:', allRanges)
@@ -222,14 +247,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const buyValues     = batchResult[idx++] ?? []
   const sellInqValues  = sellInqRange          ? (batchResult[idx++] ?? []) : []
   const buyInqValues   = buyInqRange           ? (batchResult[idx++] ?? []) : []
-  const summaryValues  = summaryRange          ? (batchResult[idx++] ?? []) : []
+  const summaryValues  = effectiveSummaryRange ? (batchResult[idx++] ?? []) : []
   const paymentValues  = effectivePaymentRange ? (batchResult[idx++] ?? []) : []
 
   const sellCases     = valuesToRows(sellValues)
   const buyCases      = valuesToRows(buyValues)
   const sellInquiries = rowsToInquiryData(valuesToRows(sellInqValues))
   const buyInquiries  = rowsToInquiryData(valuesToRows(buyInqValues))
-  const salesSummary  = valuesToRows(summaryValues)
+  const salesSummary  = summaryValuesToRows(summaryValues)
   const paymentRecords = valuesToRows(paymentValues)
 
   console.log(
