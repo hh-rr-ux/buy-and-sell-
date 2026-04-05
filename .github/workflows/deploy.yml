@@ -48,7 +48,7 @@ jobs:
           GOOGLE_SHEETS_LINE_RANGE:   ${{ secrets.GOOGLE_SHEETS_LINE_RANGE }}
 
       - name: Build
-        run: next build
+        run: npx next build
 
       - name: Inject _worker.js into out/
         run: cp _worker.js out/_worker.js
