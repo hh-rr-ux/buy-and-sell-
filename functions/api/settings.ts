@@ -32,6 +32,11 @@ interface Env {
   GOOGLE_SHEETS_API_KEY?: string
   GOOGLE_SHEETS_CASES_RANGE?: string
   GOOGLE_SHEETS_LINE_RANGE?: string
+  GOOGLE_SHEETS_SELL_RANGE?: string
+  GOOGLE_SHEETS_BUY_RANGE?: string
+  GOOGLE_SHEETS_SELL_INQ_RANGE?: string
+  GOOGLE_SHEETS_BUY_INQ_RANGE?: string
+  GOOGLE_SHEETS_SUMMARY_RANGE?: string
   ANTHROPIC_API_KEY?: string
 }
 
@@ -53,10 +58,15 @@ const SETTING_DEFS: SettingDef[] = [
   { key: 'CHATWORK_ROOM_RECRUITMENT',  label: '求人チャット ルームID',       group: 'chatwork', sensitive: false },
   { key: 'CHATWORK_ROOM_NOTIFICATION', label: '通知チャット ルームID',       group: 'chatwork', sensitive: false },
   { key: 'CHATWORK_ROOM_CUSTOMER',     label: 'メッセージチャット ルームID', group: 'chatwork', sensitive: false },
-  { key: 'GOOGLE_SHEETS_ID',           label: 'スプレッドシートID',          group: 'sheets',   sensitive: false },
-  { key: 'GOOGLE_SHEETS_API_KEY',      label: 'Google Sheets APIキー',       group: 'sheets',   sensitive: true  },
-  { key: 'GOOGLE_SHEETS_CASES_RANGE',  label: '案件管理シート範囲',           group: 'sheets',   sensitive: false },
-  { key: 'GOOGLE_SHEETS_LINE_RANGE',   label: 'LINE問い合わせシート範囲',     group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_ID',             label: 'スプレッドシートID',              group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_API_KEY',        label: 'Google Sheets APIキー',           group: 'sheets',   sensitive: true  },
+  { key: 'GOOGLE_SHEETS_SELL_RANGE',     label: '売却案件シート範囲',               group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_BUY_RANGE',      label: '購入案件シート範囲',               group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_SELL_INQ_RANGE', label: '売却問い合わせシート範囲（任意）', group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_BUY_INQ_RANGE',  label: '購入問い合わせシート範囲（任意）', group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_SUMMARY_RANGE',  label: '売上集計シート範囲（任意）',       group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_CASES_RANGE',    label: '案件管理シート範囲（旧）',         group: 'sheets',   sensitive: false },
+  { key: 'GOOGLE_SHEETS_LINE_RANGE',     label: 'LINE問い合わせシート範囲（旧）',   group: 'sheets',   sensitive: false },
   { key: 'ANTHROPIC_API_KEY',          label: 'Anthropic APIキー',           group: 'ai',       sensitive: true  },
 ]
 
