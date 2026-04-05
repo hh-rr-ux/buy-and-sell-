@@ -141,24 +141,15 @@ export function useSheetData(): SheetData {
         const inqMap = mapInquiryStats(json.sellInquiries ?? {}, json.buyInquiries ?? {})
         const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
 
-        // ── salesSummary 構造調査ログ ──
-        console.group('[salesSummary] 全行ダンプ（列名 + 月ラベル候補）')
+        // ── salesSummary 構造調査ログ（全列ダンプ） ──
+        console.group('[salesSummary] 構造調査')
         console.log('総行数:', salesRows.length)
         if (salesRows.length > 0) {
-          console.log('列名一覧:', Object.keys(salesRows[0]))
+          console.log('【列名一覧】', JSON.stringify(Object.keys(salesRows[0])))
         }
-        const TOTAL_COL_DEBUG = '↓【全体】発生月で集計'
-        const MONTH_COL_CANDIDATES = ['月', '年月', '対象月', '期間', '発生月', '売上対象月',
-          '25年10月', '25年11月', '25年12月', '26年1月', '26年2月', '26年3月', '26年4月']
-        salesRows.forEach((row, i) => {
-          const totalVal = row[TOTAL_COL_DEBUG] ?? ''
-          // 月ラベルになりそうな列を探す
-          const monthEntry = Object.entries(row).find(([, v]) =>
-            /^\d{2}年\d{1,2}月$/.test(v) || /^\d{4}[\/-]\d{2}/.test(v) ||
-            /^(20\d{2}年\d{1,2}月|R\d+年\d+月)$/.test(v)
-          )
-          const monthHint = monthEntry ? `${monthEntry[0]}="${monthEntry[1]}"` : '(月列なし)'
-          console.log(`行${i}: total="${totalVal}" ${monthHint}`)
+        // 先頭10行の全列を出力（行と月の対応を特定するため）
+        salesRows.slice(0, 10).forEach((row, i) => {
+          console.log(`【行${i} 全列】`, JSON.stringify(row))
         })
         console.groupEnd()
 
