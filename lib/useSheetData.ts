@@ -29,7 +29,7 @@ export interface SheetData {
   loaded:         boolean
 }
 
-const SESSION_KEY = 'bns_sheet_data_v9'
+const SESSION_KEY = 'bns_sheet_data_v10'
 
 // ページ間キャッシュ（SPA遷移で再fetchしない）
 let cache: SheetData | null = null

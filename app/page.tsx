@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-static'
 
+import { useState, useEffect } from 'react'
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
   Banknote, Activity,
@@ -25,6 +26,11 @@ const BUY_STAGES  = ['問い合わせ','内見','購入申し込み','売買契�
 export default function DashboardPage() {
   const { sellCases, buyCases, monthlyStats } = useSheetData()
   const kpis = calculateKPIs(sellCases, buyCases, monthlyStats)
+
+  const [today, setToday] = useState('')
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-'))
+  }, [])
 
   // パイプライン総額（全進行中案件の手数料合計）
   const pipelineValue = [
@@ -75,7 +81,7 @@ export default function DashboardPage() {
               <p className="text-white/50 text-xs font-medium uppercase tracking-widest mb-0.5">不動産売買 経営ダッシュボード</p>
               <h1 className="text-white text-xl font-bold">2026年3月 — リアルタイム概況</h1>
             </div>
-            <span className="text-white/40 text-xs">最終更新: 2026-03-31</span>
+            <span className="text-white/40 text-xs">最終更新: {today}</span>
           </div>
 
           {/* 3大指標 */}
