@@ -59,7 +59,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy out --project-name=buy-and-sell
+          command: pages deploy out --project-name=buy-and-sell --commit-message="deploy"
 
       # ── デプロイ後に Chatwork メッセージを KV に蓄積 ──────────────────
       # 認証不要のエンドポイント。KV に保存した Chatwork 設定を使って
