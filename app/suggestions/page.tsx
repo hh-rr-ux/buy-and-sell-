@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-static'
 
+import { useState, useEffect } from 'react'
 import {
   Lightbulb,
   AlertTriangle,
@@ -16,7 +17,6 @@ import {
   Scale,
   Code2,
 } from 'lucide-react'
-import { staffStats } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
 
 interface Suggestion {
@@ -122,16 +122,53 @@ function SuggestionCard({ s }: { s: Suggestion }) {
   )
 }
 
+function SuggestionsSkeleton() {
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="mb-6">
+        <div className="h-7 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+        <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+      </div>
+      <div className="bg-gray-800 rounded-xl p-5 mb-6 animate-pulse">
+        <div className="h-10 w-48 bg-white/10 rounded mb-4" />
+        <div className="grid grid-cols-3 gap-3">
+          {[0,1,2].map(i => <div key={i} className="h-16 bg-white/10 rounded-xl" />)}
+        </div>
+      </div>
+      <div className="space-y-5">
+        {[0,1,2,3].map(i => (
+          <div key={i} className="bg-white rounded-xl border border-gray-100 p-5 animate-pulse">
+            <div className="h-4 w-48 bg-gray-200 rounded mb-3" />
+            <div className="h-20 bg-gray-50 rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SuggestionsPage() {
+  const [mounted, setMounted] = useState(false)
   const { sellCases, buyCases } = useSheetData()
+
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return <SuggestionsSkeleton />
 
   // Rule-based analysis
   const stalledSellCount = sellCases.filter(c => c.stage === '販売活動' && c.daysInStage > 30).length
-  const maxStaffCases = Math.max(...staffStats.map(s => s.activeCases))
-  const minStaffCases = Math.min(...staffStats.map(s => s.activeCases))
-  const overloadedStaff = staffStats.filter(s => s.activeCases >= maxStaffCases).map(s => s.name)
-  const underloadedStaff = staffStats.filter(s => s.activeCases <= minStaffCases).map(s => s.name)
   const loanStalled = buyCases.filter(c => c.stage === 'ローン審査' && c.daysInStage > 14)
+
+  // 担当者ごとの案件数（実データから算出）
+  const staffCaseMap: Record<string, number> = {}
+  for (const c of [...sellCases, ...buyCases]) {
+    const staff = typeof c.staff === 'string' ? c.staff : ''
+    if (staff && staff !== '—') staffCaseMap[staff] = (staffCaseMap[staff] || 0) + 1
+  }
+  const staffEntries = Object.entries(staffCaseMap)
+  const maxStaffCases = staffEntries.length > 0 ? Math.max(...staffEntries.map(([, v]) => v)) : 0
+  const minStaffCases = staffEntries.length > 0 ? Math.min(...staffEntries.map(([, v]) => v)) : 0
+  const overloadedStaff = staffEntries.filter(([, v]) => v >= maxStaffCases).map(([k]) => k)
+  const underloadedStaff = staffEntries.filter(([, v]) => v <= minStaffCases).map(([k]) => k)
 
   const suggestions: Suggestion[] = [
     {
