@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import { ShoppingCart, LayoutGrid, List, Filter } from 'lucide-react'
 import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
-import { BUY_STAGES, type BuyCase, type BuyStage, type Staff } from '@/lib/mockData'
+import { BUY_STAGES, getBestBuyPrice, type BuyCase, type BuyStage, type Staff } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
 
 const BUY_STAGE_COLORS: Record<string, string> = {
@@ -85,7 +85,7 @@ export default function BuyPage() {
 
   const pipelineCases = filtered.map((c) => ({
     ...c,
-    budget: c.budget,
+    budget: getBestBuyPrice(c),
   }))
 
   const columns = [
@@ -122,11 +122,17 @@ export default function BuyPage() {
     },
     {
       key: 'budget' as keyof BuyCase,
-      label: '買付価格',
+      label: '価格',
       sortable: true,
-      render: (v: BuyCase[keyof BuyCase]) => (
-        <span className="font-semibold text-blue-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
-      ),
+      render: (_v: BuyCase[keyof BuyCase], row: BuyCase) => {
+        const best = getBestBuyPrice(row)
+        const label = row.contractPrice > 0 ? '成約' : '買付'
+        return (
+          <span className="font-semibold text-blue-600">
+            {best > 0 ? <>{formatPrice(best)}<span className="text-[10px] text-gray-400 ml-1">{label}</span></> : '—'}
+          </span>
+        )
+      },
     },
     {
       key: 'stage' as keyof BuyCase,

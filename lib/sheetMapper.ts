@@ -132,15 +132,32 @@ function normalizeStage(raw: string, validStages: readonly string[]): string {
   return aliases[raw] || raw
 }
 
+/** ステージに対応する「そのステージに入った日」を返す */
+function sellStageDateKey(row: SheetRow, stage: string): string {
+  switch (stage) {
+    case '決済':       return g(row, '決済日', '引渡日', '引き渡し日')
+    case '売買契約':   return g(row, '売買契約日', '契約日')
+    case '媒介契約':
+    case '販売活動':   return g(row, '媒介契約日')
+    case '査定':       return g(row, '面談日', '査定日', '訪問日')
+    default:           return g(row, '面談日', '問い合わせ日', '登録日', '受付日', '開始日')
+  }
+}
+
 export function mapSellCase(row: SheetRow, idx: number): SellCase {
-  // 売却シートには物件価格列がないため askingPrice = 0
-  const priceStr = g(row, '物件価格', '希望価格', '売価', '価格', '販売価格')
-  const price    = parseNum(priceStr)
-  const feeStr   = g(row, '仲介手数料（税込）', '仲介手数料', '手数料', '報酬額')
-  const fee      = parseNum(feeStr) || (price > 0 ? calcBrokerageFee(price) : 0)
-  const stageRaw = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
-  const stage    = normalizeStage(stageRaw, [...SELL_STAGES, '相談終了']) as SellStage
-  const startDate = g(row, '面談日', '媒介契約日', '開始日', '受付日', '問い合わせ日', '登録日')
+  const priceStr      = g(row, '物件価格', '希望価格', '売価', '価格', '販売価格')
+  const price         = parseNum(priceStr)
+  const contractStr   = g(row, '成約価格', '成約金額')
+  const contractPrice = parseNum(contractStr)
+  const assessStr     = g(row, '査定価格', '査定額', '査定金額')
+  const assessmentPrice = parseNum(assessStr)
+  const feeStr        = g(row, '仲介手数料（税込）', '仲介手数料', '手数料', '報酬額')
+  const baseForFee    = contractPrice || price || assessmentPrice
+  const fee           = parseNum(feeStr) || (baseForFee > 0 ? calcBrokerageFee(baseForFee) : 0)
+  const stageRaw      = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
+  const stage         = normalizeStage(stageRaw, [...SELL_STAGES, '相談終了']) as SellStage
+  const startDate     = g(row, '面談日', '媒介契約日', '開始日', '受付日', '問い合わせ日', '登録日')
+  const stageDate     = sellStageDateKey(row, stage) || startDate
 
   return {
     id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `S${String(idx + 1).padStart(3, '0')}`,
@@ -150,21 +167,34 @@ export function mapSellCase(row: SheetRow, idx: number): SellCase {
     propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ'),
     prefecture:         g(row, 'エリア区分', '都道府県', '県', '府', '都'),
     askingPrice:        price,
+    contractPrice,
+    assessmentPrice,
     brokerageFee:       fee,
     stage,
     staff:              (g(row, '担当者', '担当', '担当スタッフ', '担当名') || '—') as Staff,
     startDate,
     lastContactDate:    g(row, '次回報告日', '決済日', '売買契約日', '最終連絡日', '最終対応日'),
     notes:              g(row, 'メモ', '備考', '特記事項', 'コメント', '備考欄'),
-    daysInStage:        daysFromDate(startDate),
+    daysInStage:        daysFromDate(stageDate),
     counterpartyBroker: g(row, '買側業者', '対応業者', '相手業者', '仲介業者', '購入側業者') || '—',
   }
 }
 
+/** ステージに対応する「そのステージに入った日」を返す */
+function buyStageDateKey(row: SheetRow, stage: string): string {
+  switch (stage) {
+    case '決済':          return g(row, '決済日', '引渡日', '引き渡し日')
+    case 'ローン審査':
+    case '売買契約':      return g(row, '売買契約日', '契約日')
+    case '購入申し込み':  return g(row, '買付申込日', '申込日', '買付日')
+    case '内見':          return g(row, '内見日', '案内日')
+    default:              return g(row, '面談日', '問い合わせ日', '登録日', '受付日', '開始日')
+  }
+}
+
 export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
-  // 購入シート: 買付価格 → budget, 成約価格 → contractPrice
   const budgetStr   = g(row, '買付価格', '予算', '購入予算', '物件価格', '価格')
-  const contractStr = g(row, '成約価格')
+  const contractStr = g(row, '成約価格', '成約金額')
   const budget        = parseNum(budgetStr)
   const contractPrice = parseNum(contractStr)
   const feeStr    = g(row, '仲介手数料（税込）', '仲介手数料', '手数料', '報酬額')
@@ -173,6 +203,7 @@ export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
   const stageRaw  = g(row, 'ステータス', '進捗', 'ステージ', '状況', '進捗状況')
   const stage     = normalizeStage(stageRaw, [...BUY_STAGES, '相談終了']) as BuyStage
   const startDate = g(row, '面談日', '開始日', '受付日', '問い合わせ日', '登録日')
+  const stageDate = buyStageDateKey(row, stage) || startDate
 
   return {
     id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `B${String(idx + 1).padStart(3, '0')}`,
@@ -189,7 +220,7 @@ export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
     startDate,
     lastContactDate:    g(row, '決済日', '売買契約', '次回報告日', '最終連絡日', '最終対応日'),
     notes:              g(row, 'メモ', '備考', '特記事項', 'コメント', '備考欄'),
-    daysInStage:        daysFromDate(startDate),
+    daysInStage:        daysFromDate(stageDate),
     counterpartyBroker: g(row, '売主仲介／担当', '売側業者', '対応業者', '相手業者', '仲介業者') || '—',
   }
 }
@@ -207,6 +238,38 @@ export function mapSalesSummary(
     const newInquiries = parseInt(g(row, '新規問い合わせ', '問い合わせ数', '新規問合せ', '問合せ数', '問合せ')) || 0
     return { month, revenue, closedSell, closedBuy, newInquiries, totalRevenue: revenue }
   }).filter((m): m is NonNullable<typeof m> => m !== null)
+}
+
+/** 入金確認タブ → 月別入金確認済み金額の集計 */
+export function mapPaymentRecords(
+  rows: SheetRow[],
+): Record<string, number> {
+  // 確認済みと見なす値のセット
+  const CONFIRMED = new Set(['○', '◯', '✓', '✔', '済', '完了', '確認済', 'TRUE', 'true', '入金済'])
+  const result: Record<string, number> = {}
+
+  for (const row of rows) {
+    const dateStr = g(row, '日付', '入金日', '年月', '対象月', '月', '決済日')
+    if (!dateStr) continue
+
+    // "2026/04/05", "2026-04-05", "2026年4月5日" → "2026-04" or "2026/04"
+    const clean  = dateStr.replace(/年/, '-').replace(/月.*/, '').replace(/\//g, '-').trim()
+    const parts  = clean.split('-')
+    if (parts.length < 2) continue
+    const monthKey = `${parts[0]}-${parts[1].padStart(2, '0')}`  // "2026-04"
+
+    const confirmVal = g(row, '入金確認', '確認', 'ステータス', '状態', '入金').trim()
+    const isConfirmed = CONFIRMED.has(confirmVal) || confirmVal !== ''  // 値があれば確認済みとみなす
+
+    if (!isConfirmed) continue
+
+    const amount = parseNum(g(row, '入金額', '金額', '手数料', '仲介手数料', '売上', '仲介手数料（税込）'))
+    if (amount > 0) {
+      result[monthKey] = (result[monthKey] || 0) + amount
+    }
+  }
+
+  return result
 }
 
 /** タブ名 "26年4月" → "2026年4月" */

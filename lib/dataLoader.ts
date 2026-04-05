@@ -83,8 +83,8 @@ export function calculateKPIs(
     currentMonth.closedSell + currentMonth.closedBuy
   const prevMonthClosedDeals = prevMonth.closedSell + prevMonth.closedBuy
 
-  const activeCases = sells.filter((c) => c.stage !== '決済').length +
-    buys.filter((c) => c.stage !== '決済').length
+  const activeCases = sells.filter((c) => c.stage !== '決済' && c.stage !== '相談終了').length +
+    buys.filter((c) => c.stage !== '決済' && c.stage !== '相談終了').length
 
   const allDays = [
     ...sells.map((c) => {

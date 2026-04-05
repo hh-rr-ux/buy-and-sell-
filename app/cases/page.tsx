@@ -8,7 +8,7 @@ import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
 import {
   SELL_STAGES, BUY_STAGES,
-  formatPrice,
+  formatPrice, getBestSellPrice,
   type SellCase, type BuyCase, type Staff,
 } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
@@ -67,9 +67,9 @@ function buildAllCases(sells: SellCase[], buys: BuyCase[]): UnifiedCase[] {
       stage:              c.stage,
       counterpartyBroker: c.counterpartyBroker,
       staff:              c.staff,
-      askingPrice:        c.askingPrice,
+      askingPrice:        getBestSellPrice(c),
       budget:             0,
-      contractPrice:      0,
+      contractPrice:      c.contractPrice ?? 0,
       fee:                c.brokerageFee,   // シートの「仲介手数料（税込）」列
       daysInStage:        c.daysInStage,
       lastContactDate:    c.lastContactDate,
@@ -259,13 +259,19 @@ export default function CasesPage() {
     },
     {
       key: 'askingPrice' as keyof UnifiedCase,
-      label: '販売価格',
+      label: '売却価格',
       sortable: true,
-      render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => (
-        row.type === '売却'
-          ? <span className="font-semibold text-red-600">{Number(v) > 0 ? formatPrice(Number(v)) : '—'}</span>
-          : <span className="text-gray-300">—</span>
-      ),
+      render: (v: UnifiedCase[keyof UnifiedCase], row: UnifiedCase) => {
+        if (row.type !== '売却') return <span className="text-gray-300">—</span>
+        const hasSellContract = row.contractPrice > 0
+        return (
+          <span className="font-semibold text-red-600">
+            {Number(v) > 0
+              ? <>{formatPrice(Number(v))}{hasSellContract && <span className="text-[10px] text-green-600 ml-1">成約</span>}</>
+              : '—'}
+          </span>
+        )
+      },
     },
     {
       key: 'budget' as keyof UnifiedCase,
@@ -328,7 +334,7 @@ export default function CasesPage() {
   // ボード用に price フィールドを付与
   const boardCases = filtered.map(c => ({
     ...c,
-    price: c.askingPrice || c.contractPrice || c.budget,
+    price: c.contractPrice || c.askingPrice || c.budget,
   }))
 
   return (

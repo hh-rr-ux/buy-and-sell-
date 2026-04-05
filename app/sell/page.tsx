@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import { TrendingDown, LayoutGrid, List, Filter } from 'lucide-react'
 import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
-import { SELL_STAGES, type SellCase, type SellStage, type Staff } from '@/lib/mockData'
+import { SELL_STAGES, getBestSellPrice, type SellCase, type SellStage, type Staff } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
 
 const SELL_STAGE_COLORS: Record<string, string> = {
@@ -85,7 +85,7 @@ export default function SellPage() {
 
   const pipelineCases = filtered.map((c) => ({
     ...c,
-    price: c.askingPrice,
+    price: getBestSellPrice(c),
   }))
 
   const columns = [

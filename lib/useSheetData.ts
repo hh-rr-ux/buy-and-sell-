@@ -7,16 +7,18 @@ import {
   monthlyStats as mockMonthlyStats,
   type SellCase, type BuyCase, type MonthlyStats,
 } from './mockData'
-import { mapSellCase, mapBuyCase, mapInquiryStats, mapSalesSummary } from './sheetMapper'
+import { mapSellCase, mapBuyCase, mapInquiryStats, mapSalesSummary, mapPaymentRecords } from './sheetMapper'
 
 export interface SheetData {
-  sellCases:      SellCase[]
-  buyCases:       BuyCase[]
-  monthlyStats:   MonthlyStats[]
-  inquirySummary: Record<string, { newInquiries: number; closedSell: number; closedBuy: number }>
-  loaded:         boolean
-  dataSource:     'real' | 'mock_fallback' | 'error'
-  errorMessage?:  string
+  sellCases:        SellCase[]
+  buyCases:         BuyCase[]
+  monthlyStats:     MonthlyStats[]
+  inquirySummary:   Record<string, { newInquiries: number; closedSell: number; closedBuy: number }>
+  confirmedRevenue: number    // 入金確認タブの今月確定売上
+  loadedAt:         string    // データ取得日時 "2026/04/05 15:30"
+  loaded:           boolean
+  dataSource:       'real' | 'mock_fallback' | 'error'
+  errorMessage?:    string
 }
 
 // ── キャッシュ（モジュールスコープ・全ページ共有） ──
@@ -25,12 +27,14 @@ let cacheTimestamp  = 0
 const CACHE_TTL     = 300_000 // 5分（ms）
 
 const FALLBACK: SheetData = {
-  sellCases:      mockSellCases,
-  buyCases:       mockBuyCases,
-  monthlyStats:   mockMonthlyStats,
-  inquirySummary: {},
-  loaded:         false,
-  dataSource:     'mock_fallback',
+  sellCases:        mockSellCases,
+  buyCases:         mockBuyCases,
+  monthlyStats:     mockMonthlyStats,
+  inquirySummary:   {},
+  confirmedRevenue: 0,
+  loadedAt:         '',
+  loaded:           false,
+  dataSource:       'mock_fallback',
 }
 
 export function clearSheetCache() {
@@ -52,6 +56,13 @@ function mergeInquiries(
       closedBuy:    real.closedBuy    > 0 ? real.closedBuy    : m.closedBuy,
     }
   })
+}
+
+function formatLoadedAt(ts: number): string {
+  return new Date(ts).toLocaleString('ja-JP', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  }).replace(/\//g, '/')
 }
 
 export function useSheetData(): SheetData {
@@ -78,11 +89,12 @@ export function useSheetData(): SheetData {
         return r.json()
       })
       .then((json: {
-        sellCases:     Record<string, string>[] | { error: string }
-        buyCases:      Record<string, string>[] | { error: string }
-        sellInquiries: Record<string, Record<string, number[]>>
-        buyInquiries:  Record<string, Record<string, number[]>>
-        salesSummary:  Record<string, string>[]
+        sellCases:      Record<string, string>[] | { error: string }
+        buyCases:       Record<string, string>[] | { error: string }
+        sellInquiries:  Record<string, Record<string, number[]>>
+        buyInquiries:   Record<string, Record<string, number[]>>
+        salesSummary:   Record<string, string>[]
+        paymentRecords: Record<string, string>[]
       }) => {
         console.group('[useSheetData] APIレスポンス詳細')
         console.log('sellCases:', json.sellCases)
@@ -90,6 +102,7 @@ export function useSheetData(): SheetData {
         console.log('sellInquiries:', json.sellInquiries)
         console.log('buyInquiries:', json.buyInquiries)
         console.log('salesSummary:', json.salesSummary)
+        console.log('paymentRecords:', json.paymentRecords)
         console.groupEnd()
 
         const sellArr = Array.isArray(json.sellCases) ? json.sellCases : []
@@ -130,14 +143,24 @@ export function useSheetData(): SheetData {
           ? mergeInquiries(realStats, inqMap)
           : mergeInquiries(mockMonthlyStats, inqMap)
 
+        // 入金確認タブ → 今月の確定売上
+        const paymentRows = Array.isArray(json.paymentRecords) ? json.paymentRecords : []
+        const paymentByMonth = mapPaymentRecords(paymentRows)
+        const thisMonth = new Date().toISOString().slice(0, 7) // "2026-04"
+        const confirmedRevenue = paymentByMonth[thisMonth] ?? 0
+        console.log(`[useSheetData] 入金確認 今月(${thisMonth}): ${confirmedRevenue}円`)
+
+        const now = Date.now()
         const result: SheetData = {
           sellCases: sells, buyCases: buys, monthlyStats,
-          inquirySummary: inqMap, loaded: true, dataSource, errorMessage,
+          inquirySummary: inqMap, confirmedRevenue,
+          loadedAt: formatLoadedAt(now),
+          loaded: true, dataSource, errorMessage,
         }
 
         // ✅ 成功時のみキャッシュを更新
         cache          = result
-        cacheTimestamp = Date.now()
+        cacheTimestamp = now
         console.log(`[useSheetData] キャッシュ保存 TTL:${CACHE_TTL / 1000}秒`)
         setData(result)
       })

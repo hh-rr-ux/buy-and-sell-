@@ -25,8 +25,10 @@ export interface SellCase {
   propertyAddress: string
   propertyType: string
   prefecture: string     // 都道府県（スプシ連携時はシートから取得）
-  askingPrice: number    // 物件価格（円）
-  brokerageFee: number   // 仲介手数料（スプシから直接取得）
+  askingPrice: number      // 販売価格（円）
+  contractPrice?: number   // 成約価格（円）— シートの「成約価格」列（シート連携時に設定）
+  assessmentPrice?: number // 査定価格（円）— シートの「査定価格」列（シート連携時に設定）
+  brokerageFee: number    // 仲介手数料（スプシから直接取得）
   stage: SellStage
   staff: Staff
   startDate: string
@@ -162,6 +164,16 @@ export function calcBrokerageFee(price: number): number {
     fee = price * 0.05
   }
   return Math.floor(fee * 1.1)
+}
+
+/** 価格優先ルール: 成約価格 > 販売価格 > 査定価格 */
+export function getBestSellPrice(c: SellCase): number {
+  return c.contractPrice || c.askingPrice || c.assessmentPrice || 0
+}
+
+/** 価格優先ルール: 成約価格 > 買付価格 */
+export function getBestBuyPrice(c: BuyCase): number {
+  return c.contractPrice || c.budget || 0
 }
 
 // 金額を「〇〇万円」形式でフォーマット

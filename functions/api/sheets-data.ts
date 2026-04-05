@@ -40,6 +40,7 @@ interface Env {
   GOOGLE_SHEETS_SELL_INQ_RANGE?: string
   GOOGLE_SHEETS_BUY_INQ_RANGE?: string
   GOOGLE_SHEETS_SUMMARY_RANGE?: string
+  GOOGLE_SHEETS_PAYMENT_RANGE?: string  // 入金確認タブ
 }
 
 /** KV → env var の順で値を取得 */
@@ -159,12 +160,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     }, { headers: { 'X-Cache': 'MISS', 'X-Sheets-Requests': '0', 'Cache-Control': 'no-store' } })
   }
 
-  const [sellRange, buyRange, sellInqRange, buyInqRange, summaryRange] = await Promise.all([
+  const [sellRange, buyRange, sellInqRange, buyInqRange, summaryRange, paymentRange] = await Promise.all([
     getConfig(kv, env, 'GOOGLE_SHEETS_SELL_RANGE'),
     getConfig(kv, env, 'GOOGLE_SHEETS_BUY_RANGE'),
     getConfig(kv, env, 'GOOGLE_SHEETS_SELL_INQ_RANGE'),
     getConfig(kv, env, 'GOOGLE_SHEETS_BUY_INQ_RANGE'),
     getConfig(kv, env, 'GOOGLE_SHEETS_SUMMARY_RANGE'),
+    getConfig(kv, env, 'GOOGLE_SHEETS_PAYMENT_RANGE'),
   ])
 
   const effectiveSellRange = sellRange || '【売却】案件管理!A1:Z500'
@@ -175,6 +177,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   if (sellInqRange) allRanges.push(sellInqRange)
   if (buyInqRange)  allRanges.push(buyInqRange)
   if (summaryRange) allRanges.push(summaryRange)
+  if (paymentRange) allRanges.push(paymentRange)
 
   console.log(`[sheets-data] batchGet: ${allRanges.length}レンジ → Sheets APIリクエスト1回`)
 
@@ -196,21 +199,23 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   let idx = 0
   const sellValues    = batchResult[idx++] ?? []
   const buyValues     = batchResult[idx++] ?? []
-  const sellInqValues = sellInqRange ? (batchResult[idx++] ?? []) : []
-  const buyInqValues  = buyInqRange  ? (batchResult[idx++] ?? []) : []
-  const summaryValues = summaryRange ? (batchResult[idx++] ?? []) : []
+  const sellInqValues  = sellInqRange  ? (batchResult[idx++] ?? []) : []
+  const buyInqValues   = buyInqRange   ? (batchResult[idx++] ?? []) : []
+  const summaryValues  = summaryRange  ? (batchResult[idx++] ?? []) : []
+  const paymentValues  = paymentRange  ? (batchResult[idx++] ?? []) : []
 
   const sellCases     = valuesToRows(sellValues)
   const buyCases      = valuesToRows(buyValues)
   const sellInquiries = rowsToInquiryData(valuesToRows(sellInqValues))
   const buyInquiries  = rowsToInquiryData(valuesToRows(buyInqValues))
   const salesSummary  = valuesToRows(summaryValues)
+  const paymentRecords = valuesToRows(paymentValues)
 
   console.log(
-    `[sheets-data] 取得完了: 売却=${sellCases.length}件, 購入=${buyCases.length}件`,
+    `[sheets-data] 取得完了: 売却=${sellCases.length}件, 購入=${buyCases.length}件, 入金=${paymentRecords.length}件`,
   )
 
-  const result = { sellCases, buyCases, sellInquiries, buyInquiries, salesSummary }
+  const result = { sellCases, buyCases, sellInquiries, buyInquiries, salesSummary, paymentRecords }
 
   // ── KVにキャッシュ保存（TTL 5分） ──
   if (kv) {
