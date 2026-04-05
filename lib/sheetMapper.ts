@@ -162,7 +162,7 @@ export function mapSellCase(row: SheetRow, idx: number): SellCase {
   return {
     id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `S${String(idx + 1).padStart(3, '0')}`,
     clientName:         g(row, '顧客名', 'お客様名', '氏名', '顧客', 'お客様', '売主名'),
-    propertyName:       g(row, '物件名', '物件', '名称', '物件名称') || `物件${idx + 1}`,
+    propertyName:       g(row, '物件名', '物件名称'),
     propertyAddress:    g(row, '所在地（市区名）', '住所', '物件住所', '所在地', '物件所在地'),
     propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ'),
     prefecture:         g(row, 'エリア区分', '都道府県', '県', '府', '都'),
@@ -208,7 +208,7 @@ export function mapBuyCase(row: SheetRow, idx: number): BuyCase {
   return {
     id:                 g(row, '管理No', 'No', 'ID', '番号', 'No.', '管理番号') || `B${String(idx + 1).padStart(3, '0')}`,
     clientName:         g(row, '顧客名', 'お客様名', '氏名', '顧客', 'お客様', '買主名'),
-    propertyName:       g(row, '物件名', '物件', '名称', '希望物件', '物件名称') || `物件${idx + 1}`,
+    propertyName:       g(row, '物件名', '希望物件', '物件名称'),
     desiredArea:        g(row, '所在地（市区名）', '希望エリア', 'エリア区分', '希望地域', '地域'),
     propertyType:       g(row, '物件種別', '種別', '種類', 'タイプ'),
     prefecture:         g(row, 'エリア区分', '都道府県', '県', '府', '都'),
