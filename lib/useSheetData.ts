@@ -140,6 +140,10 @@ export function useSheetData(): SheetData {
         const buys  = buyFromApi  ? buyArr.map((r, i)  => mapBuyCase(r, i))  : mockBuyCases
         const inqMap = mapInquiryStats(json.sellInquiries ?? {}, json.buyInquiries ?? {})
         const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
+        salesRows.slice(0, 10).forEach((row, i) => {
+          console.log(`[salesSummary] 行${i} 全キー:`, Object.keys(row))
+          console.log(`[salesSummary] 行${i} 全値:`, JSON.stringify(row))
+        })
         const realStats = salesRows.length > 0 ? mapSalesSummary(salesRows) : null
         const monthlyStats = realStats && realStats.length > 0
           ? mergeInquiries(realStats, inqMap)
