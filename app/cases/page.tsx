@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-static'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ClipboardList, LayoutGrid, List, Filter } from 'lucide-react'
 import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
@@ -107,7 +107,33 @@ function StageBadge({ stage }: { stage: string }) {
   )
 }
 
+function CasesPageSkeleton() {
+  return (
+    <div className="p-6 max-w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="h-7 w-28 bg-gray-200 rounded animate-pulse mb-2" />
+          <div className="h-4 w-56 bg-gray-100 rounded animate-pulse" />
+        </div>
+        <div className="h-9 w-36 bg-gray-100 rounded-xl animate-pulse" />
+      </div>
+      <div className="flex gap-3 mb-5 overflow-x-auto">
+        {[0,1,2,3,4,5,6,7].map(i => (
+          <div key={i} className="h-10 w-24 bg-white border border-gray-100 rounded-xl animate-pulse flex-shrink-0" />
+        ))}
+      </div>
+      <div className="h-12 bg-white border border-gray-100 rounded-xl animate-pulse mb-5" />
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-pulse">
+        {[0,1,2,3,4,5].map(i => (
+          <div key={i} className="h-14 border-b border-gray-50 last:border-0" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function CasesPage() {
+  const [mounted, setMounted] = useState(false)
   const { sellCases, buyCases } = useSheetData()
   const allCases = buildAllCases(sellCases, buyCases)
 
@@ -115,6 +141,9 @@ export default function CasesPage() {
   const [typeFilter, setTypeFilter]   = useState<TypeFilter>('すべて')
   const [filterStage, setFilterStage] = useState<string>('すべて')
   const [filterStaff, setFilterStaff] = useState<string>('すべて')
+
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return <CasesPageSkeleton />
 
   const filtered = allCases.filter(c => {
     if (typeFilter  !== 'すべて' && c.type  !== typeFilter)  return false

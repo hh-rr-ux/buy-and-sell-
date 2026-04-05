@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-static'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TrendingDown, LayoutGrid, List, Filter } from 'lucide-react'
 import PipelineBoard from '@/components/PipelineBoard'
 import CaseTable from '@/components/CaseTable'
@@ -37,11 +37,45 @@ function StageBadge({ stage }: { stage: string }) {
   )
 }
 
+function SellPageSkeleton() {
+  return (
+    <div className="p-6 max-w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="h-7 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+          <div className="h-4 w-48 bg-gray-100 rounded animate-pulse" />
+        </div>
+        <div className="h-9 w-36 bg-gray-100 rounded-xl animate-pulse" />
+      </div>
+      <div className="flex gap-3 mb-5">
+        {[0,1,2,3,4,5].map(i => (
+          <div key={i} className="h-10 w-24 bg-white border border-gray-100 rounded-xl animate-pulse" />
+        ))}
+      </div>
+      <div className="h-12 bg-white border border-gray-100 rounded-xl animate-pulse mb-5" />
+      <div className="grid grid-cols-3 gap-4">
+        {[0,1,2,3,4,5].map(i => (
+          <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-pulse">
+            <div className="h-4 w-24 bg-gray-200 rounded mb-3" />
+            {[0,1,2].map(j => (
+              <div key={j} className="h-16 bg-gray-50 rounded-lg mb-2" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SellPage() {
+  const [mounted, setMounted] = useState(false)
   const { sellCases } = useSheetData()
   const [view, setView] = useState<'board' | 'table'>('board')
   const [filterStage, setFilterStage] = useState<SellStage | 'すべて'>('すべて')
   const [filterStaff, setFilterStaff] = useState<Staff | 'すべて'>('すべて')
+
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return <SellPageSkeleton />
 
   const filtered = sellCases.filter((c) => {
     if (filterStage !== 'すべて' && c.stage !== filterStage) return false
