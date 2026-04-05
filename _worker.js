@@ -565,7 +565,11 @@ async function fetchSheetsData(env) {
     sellCasesId ? fetchSheetValues(token, sellCasesId, effectivePaymentRange).catch(() => [])                 : [],
   ]);
 
-  // rawPayment（string[][]）をヘッダーキー付きオブジェクト配列に変換
+  // ━━━ paymentRecords: 入金確認タブから取得 — 削除禁止 ━━━━━━━━━━━━━━━━━━━━━━
+  // GOOGLE_SHEETS_PAYMENT_RANGE（デフォルト: 入金確認!A1:Z200）から取得。
+  // sellCases と同じスプレッドシート（GOOGLE_SHEETS_SELL_CASES_ID）を使用。
+  // 売上ページの paymentRecords が undefined になる場合はここが消えていないか確認。
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const paymentRecords = rawPayment.length >= 2
     ? (() => {
         const headers = rawPayment[0];
