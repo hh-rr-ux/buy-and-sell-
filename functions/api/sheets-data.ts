@@ -24,7 +24,7 @@
  */
 
 const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
-const CACHE_KEY = 'sheets:data:v4'  // 環境変数修正（SUMMARY/PAYMENT入れ替え）でv4に変更
+const CACHE_KEY = 'sheets:data:v5'  // 環境変数修正後のキャッシュ強制クリアのためv5に変更
 const CACHE_TTL_SECONDS = 300 // 5分
 
 interface KVNamespace {
@@ -142,14 +142,16 @@ function rowsToInquiryData(
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
-  // ── 環境変数を直接ログ（KV経由ではなく env から直読み） ──
-  console.log('[sheets-data] PAYMENT_RANGE=', env.GOOGLE_SHEETS_PAYMENT_RANGE)
-  console.log('[sheets-data] SUMMARY_RANGE=', env.GOOGLE_SHEETS_SUMMARY_RANGE)
+  // ── 環境変数を直接ログ（env から直読み） ──
+  console.log('[sheets-data] SUMMARY_RANGE=', env.GOOGLE_SHEETS_SUMMARY_RANGE ?? '(未設定)')
+  console.log('[sheets-data] PAYMENT_RANGE=', env.GOOGLE_SHEETS_PAYMENT_RANGE ?? '(未設定)')
   console.log('[sheets-data] SHEETS_ID=', env.GOOGLE_SHEETS_ID ? '(set)' : '(unset)')
+  console.log('[sheets-data] CACHE_KEY=', CACHE_KEY)
 
   const kv = env.SETTINGS_KV
 
   // ── KVキャッシュ確認（5分以内なら再利用） ──
+  // ※ CACHE_KEY=v5 により旧キャッシュ（v4以前）は自動的に無視される
   if (kv) {
     const cached = await kv.get(CACHE_KEY)
     if (cached) {
@@ -221,6 +223,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   if (effectiveSummaryRange)  allRanges.push(effectiveSummaryRange)
   if (effectivePaymentRange)  allRanges.push(effectivePaymentRange)
 
+  console.log('[sheets-data] batchGet全レンジ:', JSON.stringify(allRanges))
   console.log(`[sheets-data] batchGet: ${allRanges.length}レンジ → Sheets APIリクエスト1回`)
   console.log('[sheets-data] リクエストレンジ一覧:', allRanges)
   console.log(`[sheets-data] 入金確認レンジ: ${effectivePaymentRange ? `"${effectivePaymentRange}" (index=${allRanges.indexOf(effectivePaymentRange)})` : '未設定（スキップ）'}`)
