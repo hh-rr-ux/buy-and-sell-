@@ -244,30 +244,67 @@ export function mapSalesSummary(
 export function mapPaymentRecords(
   rows: SheetRow[],
 ): Record<string, number> {
-  // 確認済みと見なす値のセット
-  const CONFIRMED = new Set(['○', '◯', '✓', '✔', '済', '完了', '確認済', 'TRUE', 'true', '入金済'])
+  // 確認済みと見なす値のセット（厳密判定 — 空白・未確認・ヘッダー行を除外）
+  const CONFIRMED = new Set([
+    '○', '◯', '✓', '✔', '済', '完了', '確認済', '入金済',
+    'TRUE', 'true', '1', 'yes', 'YES', '✅',
+  ])
   const result: Record<string, number> = {}
 
+  console.group('[mapPaymentRecords] 入金確認タブ 行別解析')
+  console.log(`総行数: ${rows.length}`)
+
+  let confirmedCount = 0
   for (const row of rows) {
     const dateStr = g(row, '日付', '入金日', '年月', '対象月', '月', '決済日')
-    if (!dateStr) continue
+    if (!dateStr) {
+      console.log(`  [SKIP] 日付なし row:`, JSON.stringify(row).slice(0, 120))
+      continue
+    }
 
-    // "2026/04/05", "2026-04-05", "2026年4月5日" → "2026-04" or "2026/04"
-    const clean  = dateStr.replace(/年/, '-').replace(/月.*/, '').replace(/\//g, '-').trim()
-    const parts  = clean.split('-')
-    if (parts.length < 2) continue
+    // "2026/04/05", "2026-04-05", "2026年4月5日", "2026年4月" → "2026-04"
+    const clean = dateStr
+      .replace(/年/g, '-').replace(/月\d*日?/g, '').replace(/月/g, '')
+      .replace(/\//g, '-').trim()
+    const parts = clean.split('-').filter(p => p.length > 0)
+    if (parts.length < 2) {
+      console.log(`  [SKIP] 日付パース失敗 dateStr="${dateStr}" clean="${clean}"`)
+      continue
+    }
     const monthKey = `${parts[0]}-${parts[1].padStart(2, '0')}`  // "2026-04"
 
     const confirmVal = g(row, '入金確認', '確認', 'ステータス', '状態', '入金').trim()
-    const isConfirmed = CONFIRMED.has(confirmVal) || confirmVal !== ''  // 値があれば確認済みとみなす
+    const isConfirmed = CONFIRMED.has(confirmVal)
+
+    // どの列から金額を取得するか特定してログ
+    const AMOUNT_COLS = ['入金額', '金額', '仲介手数料（税込）', '仲介手数料', '手数料', '売上'] as const
+    let amountCol = ''
+    let amountRaw = ''
+    for (const col of AMOUNT_COLS) {
+      const v = row[col]
+      if (v !== undefined && v !== '') { amountCol = col; amountRaw = v; break }
+    }
+    const amount = parseNum(amountRaw)
+
+    console.log(
+      `  ${isConfirmed ? '✅' : '❌'} month=${monthKey} confirm="${confirmVal}" ` +
+      `col="${amountCol}" raw="${amountRaw}" parsed=${amount.toLocaleString()}円 ` +
+      `物件="${g(row, '物件名', '件名', '案件名') || '—'}"`,
+    )
 
     if (!isConfirmed) continue
-
-    const amount = parseNum(g(row, '入金額', '金額', '手数料', '仲介手数料', '売上', '仲介手数料（税込）'))
     if (amount > 0) {
       result[monthKey] = (result[monthKey] || 0) + amount
+      confirmedCount++
     }
   }
+
+  console.log('\n[mapPaymentRecords] 月別集計:')
+  Object.entries(result).sort().forEach(([m, v]) =>
+    console.log(`  ${m}: ${v.toLocaleString()}円`),
+  )
+  console.log(`確認済み合計: ${confirmedCount}件`)
+  console.groupEnd()
 
   return result
 }

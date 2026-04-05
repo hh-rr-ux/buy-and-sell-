@@ -14,8 +14,9 @@ export interface SheetData {
   buyCases:         BuyCase[]
   monthlyStats:     MonthlyStats[]
   inquirySummary:   Record<string, { newInquiries: number; closedSell: number; closedBuy: number }>
-  confirmedRevenue: number    // 入金確認タブの今月確定売上
-  loadedAt:         string    // データ取得日時 "2026/04/05 15:30"
+  confirmedRevenue: number                   // 入金確認タブの今月確定売上
+  paymentByMonth:   Record<string, number>   // 入金確認タブの月別集計（先月比計算用）
+  loadedAt:         string                   // データ取得日時 "2026/04/05 15:30"
   loaded:           boolean
   dataSource:       'real' | 'mock_fallback' | 'error'
   errorMessage?:    string
@@ -32,6 +33,7 @@ const FALLBACK: SheetData = {
   monthlyStats:     mockMonthlyStats,
   inquirySummary:   {},
   confirmedRevenue: 0,
+  paymentByMonth:   {},
   loadedAt:         '',
   loaded:           false,
   dataSource:       'mock_fallback',
@@ -146,14 +148,25 @@ export function useSheetData(): SheetData {
         // 入金確認タブ → 今月の確定売上
         const paymentRows = Array.isArray(json.paymentRecords) ? json.paymentRecords : []
         const paymentByMonth = mapPaymentRecords(paymentRows)
-        const thisMonth = new Date().toISOString().slice(0, 7) // "2026-04"
+
+        // JST (UTC+9) 基準で今月・先月キーを生成
+        const jstNow      = new Date(Date.now() + 9 * 60 * 60 * 1000)
+        const thisMonth   = jstNow.toISOString().slice(0, 7)  // "2026-04"
+        const jstLastMonth = new Date(jstNow)
+        jstLastMonth.setMonth(jstLastMonth.getMonth() - 1)
+        const lastMonth   = jstLastMonth.toISOString().slice(0, 7)  // "2026-03"
+
         const confirmedRevenue = paymentByMonth[thisMonth] ?? 0
-        console.log(`[useSheetData] 入金確認 今月(${thisMonth}): ${confirmedRevenue}円`)
+        const lastMonthRevenue = paymentByMonth[lastMonth] ?? 0
+
+        console.log(`[useSheetData] 入金確認 判定キー: 今月=${thisMonth} 先月=${lastMonth}`)
+        console.log(`[useSheetData] 入金確認 今月=${confirmedRevenue.toLocaleString()}円 先月=${lastMonthRevenue.toLocaleString()}円`)
+        console.log('[useSheetData] 入金確認 paymentByMonth全月:', paymentByMonth)
 
         const now = Date.now()
         const result: SheetData = {
           sellCases: sells, buyCases: buys, monthlyStats,
-          inquirySummary: inqMap, confirmedRevenue,
+          inquirySummary: inqMap, confirmedRevenue, paymentByMonth,
           loadedAt: formatLoadedAt(now),
           loaded: true, dataSource, errorMessage,
         }

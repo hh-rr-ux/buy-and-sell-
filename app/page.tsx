@@ -106,8 +106,20 @@ export default function DashboardPage() {
     return <DashboardSkeleton />
   }
 
-  const { sellCases, buyCases, monthlyStats, confirmedRevenue, loadedAt, dataSource, errorMessage } = sheetData
+  const { sellCases, buyCases, monthlyStats, confirmedRevenue, paymentByMonth, loadedAt, dataSource, errorMessage } = sheetData
   const kpis = calculateKPIs(sellCases, buyCases, monthlyStats)
+
+  // 入金確認タブの先月比（paymentByMonth から計算）
+  const jstNow       = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  const thisMonthKey = jstNow.toISOString().slice(0, 7)
+  const jstLast      = new Date(jstNow); jstLast.setMonth(jstLast.getMonth() - 1)
+  const lastMonthKey = jstLast.toISOString().slice(0, 7)
+  const pmThisMonth  = paymentByMonth[thisMonthKey] ?? 0
+  const pmLastMonth  = paymentByMonth[lastMonthKey] ?? 0
+  const paymentTrend = pmLastMonth > 0
+    ? Math.round(((pmThisMonth - pmLastMonth) / pmLastMonth) * 100)
+    : (confirmedRevenue > 0 ? kpis.revenueTrend : 0)
+  const paymentTrendUp = paymentTrend >= 0
 
   // ── 決済間近案件（修正2・3: 価格表示 + 物件名ペアリング） ──────────────────────
   type NearCase = {
@@ -180,7 +192,6 @@ export default function DashboardPage() {
   ]
 
   const nearClosingFee = nearClosing.reduce((s, c) => s + c.fee, 0)
-  const revenueUp  = kpis.revenueTrend >= 0
   const closedUp   = kpis.closedDealsTrend >= 0
 
   function CaseRow({ c, bg }: { c: NearCase; bg: 'green' | 'red' }) {
@@ -270,9 +281,9 @@ export default function DashboardPage() {
               <p className="text-white text-3xl font-black tracking-tight">
                 {confirmedRevenue > 0 ? formatPrice(confirmedRevenue) : formatPrice(kpis.monthlyRevenue)}
               </p>
-              <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${revenueUp ? 'text-green-400' : 'text-red-400'}`}>
-                {revenueUp ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
-                先月比 {revenueUp ? '+' : ''}{kpis.revenueTrend}%
+              <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${paymentTrendUp ? 'text-green-400' : 'text-red-400'}`}>
+                {paymentTrendUp ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
+                先月比 {paymentTrendUp ? '+' : ''}{paymentTrend}%
               </div>
               {confirmedRevenue > 0 && (
                 <p className="text-white/30 text-[10px] mt-0.5">入金確認タブより</p>
@@ -459,7 +470,7 @@ export default function DashboardPage() {
                 {pairs.map((pair, i) => (
                   <div key={`pair-${i}`} className="rounded-xl border-2 border-indigo-100 bg-indigo-50/30 overflow-hidden">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-indigo-100 bg-indigo-50">
-                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">両手ペア</span>
+                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">同一物件</span>
                       <span className="text-xs font-semibold text-indigo-700 truncate">{pair.sell?.name ?? pair.buy?.name}</span>
                     </div>
                     <div className="p-2 space-y-1.5">
