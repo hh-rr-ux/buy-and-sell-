@@ -24,7 +24,7 @@
  */
 
 const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
-const CACHE_KEY = 'sheets:data:v3'  // 直接env読み込みデバッグ用にv3に変更
+const CACHE_KEY = 'sheets:data:v4'  // 環境変数修正（SUMMARY/PAYMENT入れ替え）でv4に変更
 const CACHE_TTL_SECONDS = 300 // 5分
 
 interface KVNamespace {

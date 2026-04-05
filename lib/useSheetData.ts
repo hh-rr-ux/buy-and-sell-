@@ -140,6 +140,13 @@ export function useSheetData(): SheetData {
         const buys  = buyFromApi  ? buyArr.map((r, i)  => mapBuyCase(r, i))  : mockBuyCases
         const inqMap = mapInquiryStats(json.sellInquiries ?? {}, json.buyInquiries ?? {})
         const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
+
+        // ── salesSummary 構造確認ログ（行0〜9の全値）──
+        console.log(`[salesSummary] 行数=${salesRows.length} 列名=${JSON.stringify(salesRows[0] ? Object.keys(salesRows[0]) : [])}`)
+        salesRows.slice(0, 10).forEach((row, i) =>
+          console.log(`[salesSummary] 行${i}:`, JSON.stringify(row))
+        )
+
         const realStats = salesRows.length > 0 ? mapSalesSummary(salesRows) : null
         const monthlyStats = realStats && realStats.length > 0
           ? mergeInquiries(realStats, inqMap)
@@ -147,6 +154,8 @@ export function useSheetData(): SheetData {
 
         // 入金確認タブ → 今月の確定売上
         const paymentRows = Array.isArray(json.paymentRecords) ? json.paymentRecords : []
+        console.log(`[paymentRecords] 配列=${Array.isArray(json.paymentRecords)} 行数=${paymentRows.length}`)
+        if (paymentRows.length > 0) console.log('[paymentRecords] 行0:', JSON.stringify(paymentRows[0]))
         const paymentByMonth = mapPaymentRecords(paymentRows)
 
         // JST (UTC+9) 基準で今月・先月キーを生成
@@ -158,26 +167,24 @@ export function useSheetData(): SheetData {
 
         // ── salesSummary 固定インデックスで今月・先月を特定 ──
         // 確定情報: salesRows[3] = 2025年12月, 以降1行1ヶ月
-        const SUMMARY_BASE_ROW   = 3   // 2025年12月の行インデックス
+        // ※ 環境変数修正後に行-月対応が変わった場合はログで再確認
+        const SUMMARY_BASE_ROW   = 3
         const SUMMARY_BASE_YEAR  = 2025
         const SUMMARY_BASE_MONTH = 12
-        const calcSalesRowIdx = (year: number, month: number): number => {
-          const offset = (year - SUMMARY_BASE_YEAR) * 12 + (month - SUMMARY_BASE_MONTH)
-          return SUMMARY_BASE_ROW + offset
-        }
-        const jstYear      = parseInt(thisMonth.slice(0, 4))
-        const jstMonth     = parseInt(thisMonth.slice(5, 7))
-        const jstLastYear  = parseInt(lastMonth.slice(0, 4))
-        const jstLastMonth2 = parseInt(lastMonth.slice(5, 7))
-        const thisRowIdx   = calcSalesRowIdx(jstYear, jstMonth)
-        const lastRowIdx   = calcSalesRowIdx(jstLastYear, jstLastMonth2)
-        const thisRow      = salesRows[thisRowIdx]
-        const lastRow      = salesRows[lastRowIdx]
+        const calcSalesRowIdx = (year: number, month: number): number =>
+          SUMMARY_BASE_ROW + (year - SUMMARY_BASE_YEAR) * 12 + (month - SUMMARY_BASE_MONTH)
 
-        // 使用する収益列（今月行の全値をログし、正しい列を確認）
-        console.log(`[salesSummary] 今月行インデックス=${thisRowIdx} 先月行インデックス=${lastRowIdx}`)
-        console.log(`[salesSummary] 今月行(${thisRowIdx})全値:`, JSON.stringify(thisRow ?? 'undefined'))
-        console.log(`[salesSummary] 先月行(${lastRowIdx})全値:`, JSON.stringify(lastRow ?? 'undefined'))
+        const jstYear       = parseInt(thisMonth.slice(0, 4))
+        const jstMonthNum   = parseInt(thisMonth.slice(5, 7))
+        const jstLastYear   = parseInt(lastMonth.slice(0, 4))
+        const jstLastMonthN = parseInt(lastMonth.slice(5, 7))
+        const thisRowIdx    = calcSalesRowIdx(jstYear, jstMonthNum)
+        const lastRowIdx    = calcSalesRowIdx(jstLastYear, jstLastMonthN)
+        const thisRow       = salesRows[thisRowIdx]
+        const lastRow       = salesRows[lastRowIdx]
+
+        console.log(`[salesSummary] 今月行idx=${thisRowIdx}:`, JSON.stringify(thisRow ?? 'なし'))
+        console.log(`[salesSummary] 先月行idx=${lastRowIdx}:`, JSON.stringify(lastRow ?? 'なし'))
 
         const parseSalesRev = (row: Record<string, string> | undefined, ...cols: string[]): number => {
           if (!row) return 0
@@ -187,13 +194,12 @@ export function useSheetData(): SheetData {
           }
           return 0
         }
-        // 「↓【全体】発生月で集計」と「↓【全体】売上対象月で集計」の両方を試す
         const salesThisMonth = parseSalesRev(thisRow,
           '↓【全体】発生月で集計', '↓【全体】売上対象月で集計')
         const salesLastMonth = parseSalesRev(lastRow,
           '↓【全体】発生月で集計', '↓【全体】売上対象月で集計')
 
-        console.log(`[salesSummary] 今月=${salesThisMonth.toLocaleString()}円 先月=${salesLastMonth.toLocaleString()}円`)
+        console.log(`[salesSummary] 今月売上=${salesThisMonth.toLocaleString()}円 先月売上=${salesLastMonth.toLocaleString()}円`)
 
         // paymentByMonth に salesSummary データを補完（入金確認タブが空の場合）
         if (salesThisMonth > 0 && !paymentByMonth[thisMonth]) paymentByMonth[thisMonth] = salesThisMonth
@@ -202,7 +208,7 @@ export function useSheetData(): SheetData {
         const confirmedRevenue = paymentByMonth[thisMonth] ?? 0
         const lastMonthRevenue = paymentByMonth[lastMonth] ?? 0
 
-        console.log(`[useSheetData] 入金確認 今月=${confirmedRevenue.toLocaleString()}円 先月=${lastMonthRevenue.toLocaleString()}円`)
+        console.log(`[useSheetData] 今月の売上（確定）=${confirmedRevenue.toLocaleString()}円 先月=${lastMonthRevenue.toLocaleString()}円`)
 
         const now = Date.now()
         const result: SheetData = {
