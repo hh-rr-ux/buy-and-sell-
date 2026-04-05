@@ -23,27 +23,117 @@ const STAGE_COLORS: Record<string, string> = {
 const SELL_STAGES = ['問い合わせ','査定','媒介契約','販売活動','売買契約','決済']
 const BUY_STAGES  = ['問い合わせ','内見','購入申し込み','売買契約','ローン審査','決済']
 
+// ─── ローディングスケルトン ────────────────────────────────────────────────────
+// サーバー・クライアント初回レンダリングで必ず同じHTMLを返す。
+// これがないと cache / sessionStorage の有無でHTMLが変わり hydration error が発生する。
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero */}
+      <div className="px-6 py-6" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)' }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <div className="h-2.5 w-36 bg-white/20 rounded mb-2 animate-pulse" />
+              <div className="h-6 w-52 bg-white/25 rounded animate-pulse" />
+            </div>
+            <div className="h-2.5 w-24 bg-white/10 rounded animate-pulse" />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                <div className="h-2.5 w-20 bg-white/20 rounded mb-3 animate-pulse" />
+                <div className="h-9 w-28 bg-white/25 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Body */}
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+        {/* 4カード */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-gray-100 animate-pulse flex-shrink-0" />
+              <div className="flex-1">
+                <div className="h-2.5 w-16 bg-gray-200 rounded mb-2 animate-pulse" />
+                <div className="h-7 w-10 bg-gray-300 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* ステータス */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <div className="h-3.5 w-40 bg-gray-200 rounded mb-5 animate-pulse" />
+          <div className="space-y-4">
+            {[0, 1].map(i => (
+              <div key={i}>
+                <div className="h-2.5 w-16 bg-gray-200 rounded mb-2 animate-pulse" />
+                <div className="flex gap-1.5">
+                  {[0,1,2,3,4,5].map(j => (
+                    <div key={j} className="flex-1 h-8 bg-gray-100 rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* 2カラム */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          {[0, 1].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <div className="h-3.5 w-32 bg-gray-200 rounded mb-4 animate-pulse" />
+              <div className="space-y-2">
+                {[0, 1, 2].map(j => (
+                  <div key={j} className="h-16 bg-gray-50 rounded-lg border border-gray-100 animate-pulse" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
-  const { sellCases, buyCases, monthlyStats, dataSource, errorMessage } = useSheetData()
+  // mounted が false の間はスケルトンを返す。
+  // サーバー: false（cache/sessionStorageなし）
+  // クライアント初回: false（useEffectはまだ未実行）→ サーバーHTMLと一致 → hydration成功
+  // useEffect実行後: true → 実データを描画（クライアントのみ、hydrationの対象外）
+  const [mounted, setMounted] = useState(false)
+
+  // hooks はレンダリング順を変えてはいけないので、常に呼ぶ
+  const sheetData = useSheetData()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <DashboardSkeleton />
+  }
+
+  // ── ここから下はクライアントのみ実行（hydration対象外） ──────────────────────
+
+  const { sellCases, buyCases, monthlyStats, dataSource, errorMessage } = sheetData
   const kpis = calculateKPIs(sellCases, buyCases, monthlyStats)
 
-  // 最新月ラベル（monthlyStats の末尾から取得）
+  const today = new Date().toLocaleDateString('ja-JP', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).replace(/\//g, '-')
+
   const currentMonthLabel = monthlyStats.length > 0
     ? monthlyStats[monthlyStats.length - 1].month
     : ''
 
-  const [today, setToday] = useState('')
-  useEffect(() => {
-    setToday(new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-'))
-  }, [])
-
-  // パイプライン総額（全進行中案件の手数料合計）
   const pipelineValue = [
     ...sellCases.filter(c => c.stage !== '決済').map(c => calcBrokerageFee(c.askingPrice)),
     ...buyCases.filter(c => c.stage !== '決済').map(c => calcBrokerageFee(c.budget)),
   ].reduce((a, b) => a + b, 0)
 
-  // 決済間近（売買契約・ローン審査）
   const nearClosing = [
     ...sellCases.filter(c => c.stage === '売買契約' || c.stage === '決済').map(c => ({
       id: c.id, name: c.propertyName, clientName: c.clientName,
@@ -57,7 +147,6 @@ export default function DashboardPage() {
     })),
   ]
 
-  // 滞留案件（30日超）
   const stalledCases = [
     ...sellCases.filter(c => c.daysInStage > 30).map(c => ({
       id: c.id, name: c.propertyName, clientName: c.clientName,
@@ -71,7 +160,6 @@ export default function DashboardPage() {
     })),
   ]
 
-  // 先月比
   const revenueUp = kpis.revenueTrend >= 0
   const closedUp  = kpis.closedDealsTrend >= 0
 
@@ -110,7 +198,6 @@ export default function DashboardPage() {
 
           {/* 3大指標 */}
           <div className="grid grid-cols-3 gap-4">
-            {/* 今月売上 */}
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
               <p className="text-white/50 text-xs mb-1">今月の売上（確定）</p>
               <p className="text-white text-3xl font-black tracking-tight">{formatPrice(kpis.monthlyRevenue)}</p>
@@ -120,14 +207,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* パイプライン総額 */}
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
               <p className="text-white/50 text-xs mb-1">パイプライン総額（見込手数料）</p>
               <p className="text-white text-3xl font-black tracking-tight">{formatPrice(pipelineValue)}</p>
               <p className="text-white/40 text-xs mt-2">進行中 {kpis.activeCases}件 の合計</p>
             </div>
 
-            {/* 今月成約数 */}
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
               <p className="text-white/50 text-xs mb-1">今月の成約数</p>
               <p className="text-white text-3xl font-black tracking-tight">{kpis.monthlyClosedDeals}<span className="text-lg font-medium text-white/60 ml-1">件</span></p>
