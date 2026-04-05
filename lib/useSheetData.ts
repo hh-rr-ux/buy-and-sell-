@@ -140,6 +140,28 @@ export function useSheetData(): SheetData {
         const buys  = buyFromApi  ? buyArr.map((r, i)  => mapBuyCase(r, i))  : mockBuyCases
         const inqMap = mapInquiryStats(json.sellInquiries ?? {}, json.buyInquiries ?? {})
         const salesRows = Array.isArray(json.salesSummary) ? json.salesSummary : []
+
+        // ── salesSummary 構造調査ログ ──
+        console.group('[salesSummary] 全行ダンプ（列名 + 月ラベル候補）')
+        console.log('総行数:', salesRows.length)
+        if (salesRows.length > 0) {
+          console.log('列名一覧:', Object.keys(salesRows[0]))
+        }
+        const TOTAL_COL_DEBUG = '↓【全体】発生月で集計'
+        const MONTH_COL_CANDIDATES = ['月', '年月', '対象月', '期間', '発生月', '売上対象月',
+          '25年10月', '25年11月', '25年12月', '26年1月', '26年2月', '26年3月', '26年4月']
+        salesRows.forEach((row, i) => {
+          const totalVal = row[TOTAL_COL_DEBUG] ?? ''
+          // 月ラベルになりそうな列を探す
+          const monthEntry = Object.entries(row).find(([, v]) =>
+            /^\d{2}年\d{1,2}月$/.test(v) || /^\d{4}[\/-]\d{2}/.test(v) ||
+            /^(20\d{2}年\d{1,2}月|R\d+年\d+月)$/.test(v)
+          )
+          const monthHint = monthEntry ? `${monthEntry[0]}="${monthEntry[1]}"` : '(月列なし)'
+          console.log(`行${i}: total="${totalVal}" ${monthHint}`)
+        })
+        console.groupEnd()
+
         const realStats = salesRows.length > 0 ? mapSalesSummary(salesRows) : null
         const monthlyStats = realStats && realStats.length > 0
           ? mergeInquiries(realStats, inqMap)
