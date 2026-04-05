@@ -38,7 +38,7 @@ export interface SheetData {
   errorMessage?:  string
 }
 
-const SESSION_KEY = 'bns_sheet_data_v16'
+const SESSION_KEY = 'bns_sheet_data_v17'
 
 // ── モジュールレベルのキャッシュ・状態（全コンポーネント共有） ──
 let cache: SheetData | null = null

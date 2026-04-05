@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-static'
 
+import { useState, useEffect } from 'react'
 import {
   BarChart,
   Bar,
@@ -18,7 +19,7 @@ import {
   Line,
 } from 'recharts'
 import { BarChart3, TrendingUp, Target, MessageCircle, MapPin } from 'lucide-react'
-import { staffStats, conversionFunnel, formatPrice } from '@/lib/mockData'
+import { formatPrice } from '@/lib/mockData'
 import { useSheetData } from '@/lib/useSheetData'
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f97316', '#eab308', '#22c55e']
@@ -46,8 +47,43 @@ const CustomTooltip = ({ active, payload, label }: {
   return null
 }
 
+function AnalyticsSkeleton() {
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <div className="h-7 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+        <div className="h-4 w-48 bg-gray-100 rounded animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {[0,1,2,3].map(i => (
+          <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 text-center animate-pulse">
+            <div className="h-8 w-16 bg-gray-200 rounded mx-auto mb-2" />
+            <div className="h-3 w-24 bg-gray-100 rounded mx-auto" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {[0,1].map(i => (
+          <div key={i} className="bg-white rounded-xl border border-gray-100 p-5 animate-pulse">
+            <div className="h-4 w-32 bg-gray-200 rounded mb-4" />
+            <div className="h-64 bg-gray-50 rounded-lg" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-xl border border-gray-100 p-5 animate-pulse mb-6">
+        <div className="h-4 w-32 bg-gray-200 rounded mb-4" />
+        <div className="h-64 bg-gray-50 rounded-lg" />
+      </div>
+    </div>
+  )
+}
+
 export default function AnalyticsPage() {
+  const [mounted, setMounted] = useState(false)
   const { sellCases, buyCases, monthlyStats } = useSheetData()
+
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return <AnalyticsSkeleton />
 
   const stageDistribution = [
     { name: '問い合わせ',     value: sellCases.filter(c => c.stage === '問い合わせ').length  + buyCases.filter(c => c.stage === '問い合わせ').length },
@@ -67,6 +103,24 @@ export default function AnalyticsPage() {
   const totalInquiries = monthlyStats.reduce((sum, m) => sum + m.newInquiries, 0)
   const totalRevenue = monthlyStats.reduce((sum, m) => sum + m.revenue, 0)
   const overallConversionRate = Math.round((totalClosed / totalInquiries) * 100)
+
+  // 成約率ファネル（実データから累積計算）
+  const sellStageOrder = ['問い合わせ', '査定', '媒介契約', '販売活動', '売買契約', '決済']
+  const buyStageOrder  = ['問い合わせ', '内見', '購入申し込み', 'ローン審査', '売買契約', '決済']
+  const funnelLabels   = ['問い合わせ', '査定/内見', '媒介契約/申込', '販売活動/審査', '売買契約', '決済']
+  const rawFunnelCounts = funnelLabels.map((stage, i) => {
+    const sellCount = sellCases.filter(c => sellStageOrder.indexOf(c.stage) >= i).length
+    const buyCount  = buyCases.filter(c => buyStageOrder.indexOf(c.stage) >= i).length
+    return { stage, count: sellCount + buyCount }
+  })
+  const funnelBase = rawFunnelCounts[0]?.count || 1
+  const conversionFunnelData = rawFunnelCounts.map(item => ({
+    ...item,
+    percentage: Math.round((item.count / funnelBase) * 100),
+  }))
+  const funnelConvRate     = conversionFunnelData[5]?.percentage ?? 0
+  const funnelInspRate     = conversionFunnelData[1]?.percentage ?? 0
+  const funnelContractRate = conversionFunnelData[4]?.percentage ?? 0
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -213,7 +267,7 @@ export default function AnalyticsPage() {
           <h2 className="text-base font-semibold text-gray-800">成約率ファネル（過去6ヶ月累計）</h2>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {conversionFunnel.map((item, i) => (
+          {conversionFunnelData.map((item, i) => (
             <div key={item.stage} className="flex flex-col items-center">
               <div
                 className="w-full rounded-xl flex flex-col items-center justify-center py-5 mb-2 transition-all"
@@ -238,9 +292,9 @@ export default function AnalyticsPage() {
         </div>
         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-500 text-center">
-            問い合わせから決済までの変換率: <span className="font-bold text-green-600">14.3%</span>
-            　|　　査定・内見到達率: <span className="font-bold text-blue-600">62.9%</span>
-            　|　　契約到達率: <span className="font-bold text-purple-600">40.0%</span>
+            問い合わせから決済までの変換率: <span className="font-bold text-green-600">{funnelConvRate}%</span>
+            　|　　査定・内見到達率: <span className="font-bold text-blue-600">{funnelInspRate}%</span>
+            　|　　契約到達率: <span className="font-bold text-purple-600">{funnelContractRate}%</span>
           </p>
         </div>
       </div>
