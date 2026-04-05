@@ -24,7 +24,7 @@
  */
 
 const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
-const CACHE_KEY = 'sheets:data:v6'  // paymentRecords未取得のキャッシュ強制クリアのためv6に変更
+const CACHE_KEY = 'sheets:data:v7'  // CDNエッジキャッシュ問題修正後のキャッシュ強制クリアのためv7に変更
 const CACHE_TTL_SECONDS = 300 // 5分
 
 interface KVNamespace {
@@ -160,7 +160,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
         headers: {
           'X-Cache': 'HIT',
           'X-Sheets-Requests': '0',
-          'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
+          'Cache-Control': 'no-store',  // KVがサーバー側キャッシュを担うのでCDNエッジキャッシュは不要
         },
       })
     }
@@ -285,7 +285,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     headers: {
       'X-Cache': 'MISS',
       'X-Sheets-Requests': '1', // batchGetで1回
-      'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
+      'Cache-Control': 'no-store',  // CDNエッジキャッシュを無効化（KVが担う）
     },
   })
 }
