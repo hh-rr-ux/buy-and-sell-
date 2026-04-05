@@ -161,7 +161,7 @@ export default function SuggestionsPage() {
   // 担当者ごとの案件数（実データから算出）
   const staffCaseMap: Record<string, number> = {}
   for (const c of [...sellCases, ...buyCases]) {
-    const staff = typeof c.staff === 'string' ? c.staff : ''
+    const staff: string = typeof c.staff === 'string' ? c.staff : ''
     if (staff && staff !== '—') staffCaseMap[staff] = (staffCaseMap[staff] || 0) + 1
   }
   const staffEntries = Object.entries(staffCaseMap)

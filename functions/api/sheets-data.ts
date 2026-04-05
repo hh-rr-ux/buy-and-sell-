@@ -135,6 +135,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
         headers: {
           'X-Cache': 'HIT',
           'X-Sheets-Requests': '0',
+          'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
         },
       })
     }
@@ -155,7 +156,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       sellInquiries: {},
       buyInquiries:  {},
       salesSummary:  [],
-    }, { headers: { 'X-Cache': 'MISS', 'X-Sheets-Requests': '0' } })
+    }, { headers: { 'X-Cache': 'MISS', 'X-Sheets-Requests': '0', 'Cache-Control': 'no-store' } })
   }
 
   const [sellRange, buyRange, sellInqRange, buyInqRange, summaryRange] = await Promise.all([
@@ -188,7 +189,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       sellInquiries: {},
       buyInquiries:  {},
       salesSummary:  [],
-    }, { headers: { 'X-Cache': 'MISS', 'X-Sheets-Requests': '1' } })
+    }, { headers: { 'X-Cache': 'MISS', 'X-Sheets-Requests': '1', 'Cache-Control': 'no-store' } })
   }
 
   // レンジ順にインデックスで取り出す
@@ -221,6 +222,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     headers: {
       'X-Cache': 'MISS',
       'X-Sheets-Requests': '1', // batchGetで1回
+      'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
     },
   })
 }
