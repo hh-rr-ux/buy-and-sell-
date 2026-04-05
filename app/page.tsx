@@ -106,7 +106,7 @@ export default function DashboardPage() {
     return <DashboardSkeleton />
   }
 
-  const { sellCases, buyCases, monthlyStats, confirmedRevenue, paymentByMonth, loadedAt, dataSource, errorMessage } = sheetData
+  const { sellCases, buyCases, monthlyStats, confirmedRevenue, sellRevenue, buyRevenue, paymentByMonth, loadedAt, dataSource, errorMessage } = sheetData
   const kpis = calculateKPIs(sellCases, buyCases, monthlyStats)
 
   // 入金確認タブの先月比（paymentByMonth から計算）
@@ -275,7 +275,7 @@ export default function DashboardPage() {
 
           {/* 修正6: パイプライン総額を削除 → 2指標のみ */}
           <div className="grid grid-cols-2 gap-4">
-            {/* 修正5: 入金確認タブの今月売上 */}
+            {/* 今月の売上（確定） */}
             <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.07)' }}>
               <p className="text-white/50 text-xs mb-1">今月の売上（確定）</p>
               <p className="text-white text-3xl font-black tracking-tight">
@@ -285,8 +285,10 @@ export default function DashboardPage() {
                 {paymentTrendUp ? <TrendingUp size={13}/> : <TrendingDown size={13}/>}
                 先月比 {paymentTrendUp ? '+' : ''}{paymentTrend}%
               </div>
-              {confirmedRevenue > 0 && (
-                <p className="text-white/30 text-[10px] mt-0.5">売上集計タブより</p>
+              {(sellRevenue > 0 || buyRevenue > 0) && (
+                <p className="text-white/40 text-[10px] mt-1">
+                  売却 {formatPrice(sellRevenue)} / 購入 {formatPrice(buyRevenue)}
+                </p>
               )}
             </div>
 
